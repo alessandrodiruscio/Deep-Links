@@ -10,6 +10,20 @@ interface DeepLink {
   description: string;
   imageUrl?: string;
   clicks: number;
+  stats: {
+    iosClicks: number;
+    androidClicks: number;
+    desktopClicks: number;
+    inAppBreaks: {
+      instagram: number;
+      tiktok: number;
+      facebook: number;
+      whatsapp: number;
+      other: number;
+    };
+    appOpens: number;
+    browserEscapes: number;
+  };
 }
 
 // Persistent initial sample links
@@ -23,6 +37,14 @@ const LINKS_CACHE: DeepLink[] = [
     title: 'Alessandro Di Ruscio - Sito Ufficiale',
     description: 'Bypass automatico WebView Instagram/TikTok per apertura in Safari e Chrome.',
     clicks: 1420,
+    stats: {
+      iosClicks: 820,
+      androidClicks: 490,
+      desktopClicks: 110,
+      inAppBreaks: { instagram: 640, tiktok: 380, facebook: 190, whatsapp: 100, other: 110 },
+      appOpens: 940,
+      browserEscapes: 370,
+    },
   },
   {
     id: 'link_2',
@@ -33,6 +55,14 @@ const LINKS_CACHE: DeepLink[] = [
     title: 'Apple MacBook Air - Amazon',
     description: 'Acquista direttamente nell’app Amazon con 1-Click.',
     clicks: 2840,
+    stats: {
+      iosClicks: 1620,
+      androidClicks: 980,
+      desktopClicks: 240,
+      inAppBreaks: { instagram: 1200, tiktok: 850, facebook: 490, whatsapp: 210, other: 90 },
+      appOpens: 2310,
+      browserEscapes: 480,
+    },
   },
   {
     id: 'link_3',
@@ -43,6 +73,14 @@ const LINKS_CACHE: DeepLink[] = [
     title: 'Video YouTube Ufficiale',
     description: 'Guarda in alta definizione nell’app YouTube.',
     clicks: 980,
+    stats: {
+      iosClicks: 520,
+      androidClicks: 380,
+      desktopClicks: 80,
+      inAppBreaks: { instagram: 420, tiktok: 310, facebook: 150, whatsapp: 60, other: 40 },
+      appOpens: 810,
+      browserEscapes: 140,
+    },
   },
   {
     id: 'link_4',
@@ -53,6 +91,14 @@ const LINKS_CACHE: DeepLink[] = [
     title: 'Focus Playlist - Spotify',
     description: 'Ascolta nell’app Spotify.',
     clicks: 450,
+    stats: {
+      iosClicks: 260,
+      androidClicks: 160,
+      desktopClicks: 30,
+      inAppBreaks: { instagram: 210, tiktok: 130, facebook: 60, whatsapp: 30, other: 20 },
+      appOpens: 390,
+      browserEscapes: 50,
+    },
   },
 ];
 
@@ -135,11 +181,13 @@ export default async function handler(req: any, res: any) {
 
   // Handle API route: GET /api/links
   if (rawUrl.includes('/api/links') && req.method === 'GET') {
+    res.setHeader('Content-Type', 'application/json');
     return res.status(200).json(LINKS_CACHE);
   }
 
   // Handle API route: POST /api/links
   if (rawUrl.includes('/api/links') && req.method === 'POST') {
+    res.setHeader('Content-Type', 'application/json');
     const body = req.body || {};
     const originalUrl = body.originalUrl;
     if (!originalUrl) {
@@ -154,10 +202,18 @@ export default async function handler(req: any, res: any) {
       slug: finalSlug,
       originalUrl,
       platform,
-      targetMode: body.targetMode || 'smart',
+      targetMode: body.targetMode || (platform === 'generic' ? 'system_browser' : 'smart'),
       title: body.title || 'Nuovo Deep Link',
       description: body.description || '',
       clicks: 0,
+      stats: {
+        iosClicks: 0,
+        androidClicks: 0,
+        desktopClicks: 0,
+        inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+        appOpens: 0,
+        browserEscapes: 0,
+      },
     };
 
     LINKS_CACHE.unshift(newLink);
@@ -171,16 +227,53 @@ export default async function handler(req: any, res: any) {
 
     // 2. Look in fallback query parameter ?u=... if passed
     if (!link && query.u) {
+      const decodedOriginalUrl = decodeURIComponent(query.u as string);
       link = {
         id: 'param',
         slug,
-        originalUrl: decodeURIComponent(query.u as string),
-        platform: detectPlatform(query.u as string),
+        originalUrl: decodedOriginalUrl,
+        platform: detectPlatform(decodedOriginalUrl),
         targetMode: 'smart',
         title: (query.title as string) || 'Reindirizzamento...',
         description: '',
         clicks: 0,
+        stats: {
+          iosClicks: 0,
+          androidClicks: 0,
+          desktopClicks: 0,
+          inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+          appOpens: 0,
+          browserEscapes: 0,
+        },
       };
+    }
+
+    // 3. Look if slug encodes a base64 target (e.g. b_... or _)
+    if (!link && (slug.startsWith('b_') || slug.startsWith('_'))) {
+      try {
+        const rawB64 = slug.startsWith('b_') ? slug.slice(2) : slug.slice(1);
+        const decodedUrl = Buffer.from(rawB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+        if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
+          link = {
+            id: 'b64',
+            slug,
+            originalUrl: decodedUrl,
+            platform: detectPlatform(decodedUrl),
+            targetMode: 'smart',
+            title: (query.title as string) || 'Reindirizzamento...',
+            description: '',
+            clicks: 0,
+            stats: {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+        }
+      } catch {}
     }
 
     if (!link) {
@@ -193,15 +286,17 @@ export default async function handler(req: any, res: any) {
           <title>Deep Link non trovato</title>
           <style>
             body { font-family: -apple-system, sans-serif; background: #090d16; color: #fff; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; text-align: center; }
-            .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 20px; padding: 32px 24px; max-width: 400px; }
-            a { display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; margin-top: 16px; font-weight: 500; }
+            .card { background: #131b2e; border: 1px solid #1e293b; border-radius: 20px; padding: 32px 24px; max-width: 440px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            a.btn { display: inline-block; background: #4f46e5; color: #fff; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin-top: 18px; font-weight: 600; font-size: 14px; }
+            p { color: #94a3b8; font-size: 14px; line-height: 1.5; margin: 8px 0; }
           </style>
         </head>
         <body>
           <div class="card">
-            <h2 style="color:#f87171;">Link non trovato</h2>
-            <p style="color:#94a3b8; font-size:14px; margin-top:8px;">Lo slug "${slug}" non è stato trovato.</p>
-            <a href="/">Apri la Dashboard</a>
+            <h2 style="color:#f87171; margin-bottom: 8px;">Link non trovato</h2>
+            <p>Lo slug "<strong>${slug}</strong>" non è stato trovato.</p>
+            <p style="font-size: 12px; color: #64748b; margin-top: 12px;">Se hai appena creato questo link, assicurati di copiare l'URL generato dalla Dashboard DeepDirect.</p>
+            <a href="/" class="btn">Apri la Dashboard</a>
           </div>
         </body>
         </html>

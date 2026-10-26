@@ -5,6 +5,6 @@
   "rewrites": [
     { "source": "/l/:path*", "destination": "/api?slug=:path*" },
     { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/((?!api/|l/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|api/|l/|favicon|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

@@ -16,6 +16,34 @@ import { INITIAL_SAMPLE_LINKS } from './lib/sampleLinks';
 import { DeepLink } from './types/deepLink';
 import { detectPlatform, slugify } from './lib/deepLinkEngine';
 
+const normalizeLink = (l: any): DeepLink => ({
+  id: l?.id || `link_${Date.now()}`,
+  slug: l?.slug || 'link',
+  originalUrl: l?.originalUrl || '',
+  platform: l?.platform || detectPlatform(l?.originalUrl || ''),
+  targetMode: l?.targetMode || 'smart',
+  title: l?.title || 'Deep Link',
+  description: l?.description || '',
+  imageUrl: l?.imageUrl || '',
+  clicks: typeof l?.clicks === 'number' ? l.clicks : 0,
+  createdAt: l?.createdAt || new Date().toISOString(),
+  updatedAt: l?.updatedAt || new Date().toISOString(),
+  stats: {
+    iosClicks: l?.stats?.iosClicks ?? 0,
+    androidClicks: l?.stats?.androidClicks ?? 0,
+    desktopClicks: l?.stats?.desktopClicks ?? 0,
+    inAppBreaks: {
+      instagram: l?.stats?.inAppBreaks?.instagram ?? 0,
+      tiktok: l?.stats?.inAppBreaks?.tiktok ?? 0,
+      facebook: l?.stats?.inAppBreaks?.facebook ?? 0,
+      whatsapp: l?.stats?.inAppBreaks?.whatsapp ?? 0,
+      other: l?.stats?.inAppBreaks?.other ?? 0,
+    },
+    appOpens: l?.stats?.appOpens ?? 0,
+    browserEscapes: l?.stats?.browserEscapes ?? 0,
+  },
+});
+
 export default function App() {
   const [links, setLinks] = useState<DeepLink[]>(() => {
     if (typeof window !== 'undefined') {
@@ -23,11 +51,13 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map(normalizeLink);
+          }
         } catch {}
       }
     }
-    return INITIAL_SAMPLE_LINKS;
+    return INITIAL_SAMPLE_LINKS.map(normalizeLink);
   });
 
   const [currentTab, setCurrentTab] = useState<'links' | 'simulator' | 'guide' | 'analytics' | 'deploy'>('links');
@@ -67,7 +97,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setLinks(data);
+          setLinks(data.map(normalizeLink));
         }
       }
     } catch (err) {
@@ -114,7 +144,7 @@ export default function App() {
         });
         if (res.ok) {
           const created = await res.json();
-          setLinks((prev) => [created, ...prev]);
+          setLinks((prev) => [normalizeLink(created), ...prev]);
         } else {
           const platform = detectPlatform(linkData.originalUrl || '');
           const newLocalLink: DeepLink = {
@@ -196,8 +226,14 @@ export default function App() {
 
   const handleOpenQrModal = (link: DeepLink) => {
     const origin = customBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    const builtInSlugs = ['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus'];
+    const isBuiltIn = builtInSlugs.includes((link.slug || '').toLowerCase());
+    const shareableUrl = isBuiltIn
+      ? `${origin}/l/${link.slug}`
+      : `${origin}/l/${link.slug}?u=${encodeURIComponent(link.originalUrl || '')}`;
+
     setQrModalData({
-      url: `${origin}/l/${link.slug}`,
+      url: shareableUrl,
       title: link.title,
     });
   };

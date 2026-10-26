@@ -17,18 +17,18 @@ interface AnalyticsViewProps {
 }
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
-  const totalClicks = links.reduce((acc, l) => acc + l.clicks, 0);
-  const totalAppOpens = links.reduce((acc, l) => acc + l.stats.appOpens, 0);
-  const totalBrowserEscapes = links.reduce((acc, l) => acc + l.stats.browserEscapes, 0);
-  const totalIos = links.reduce((acc, l) => acc + l.stats.iosClicks, 0);
-  const totalAndroid = links.reduce((acc, l) => acc + l.stats.androidClicks, 0);
-  const totalDesktop = links.reduce((acc, l) => acc + l.stats.desktopClicks, 0);
+  const totalClicks = links.reduce((acc, l) => acc + (l.clicks || 0), 0);
+  const totalAppOpens = links.reduce((acc, l) => acc + (l.stats?.appOpens || 0), 0);
+  const totalBrowserEscapes = links.reduce((acc, l) => acc + (l.stats?.browserEscapes || 0), 0);
+  const totalIos = links.reduce((acc, l) => acc + (l.stats?.iosClicks || 0), 0);
+  const totalAndroid = links.reduce((acc, l) => acc + (l.stats?.androidClicks || 0), 0);
+  const totalDesktop = links.reduce((acc, l) => acc + (l.stats?.desktopClicks || 0), 0);
 
-  const instagramClicks = links.reduce((acc, l) => acc + (l.stats.inAppBreaks.instagram || 0), 0);
-  const tiktokClicks = links.reduce((acc, l) => acc + (l.stats.inAppBreaks.tiktok || 0), 0);
-  const facebookClicks = links.reduce((acc, l) => acc + (l.stats.inAppBreaks.facebook || 0), 0);
-  const whatsappClicks = links.reduce((acc, l) => acc + (l.stats.inAppBreaks.whatsapp || 0), 0);
-  const otherClicks = links.reduce((acc, l) => acc + (l.stats.inAppBreaks.other || 0), 0);
+  const instagramClicks = links.reduce((acc, l) => acc + (l.stats?.inAppBreaks?.instagram || 0), 0);
+  const tiktokClicks = links.reduce((acc, l) => acc + (l.stats?.inAppBreaks?.tiktok || 0), 0);
+  const facebookClicks = links.reduce((acc, l) => acc + (l.stats?.inAppBreaks?.facebook || 0), 0);
+  const whatsappClicks = links.reduce((acc, l) => acc + (l.stats?.inAppBreaks?.whatsapp || 0), 0);
+  const otherClicks = links.reduce((acc, l) => acc + (l.stats?.inAppBreaks?.other || 0), 0);
 
   const totalInApp =
     instagramClicks + tiktokClicks + facebookClicks + whatsappClicks + otherClicks || 1;

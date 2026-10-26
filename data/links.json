@@ -15,11 +15,11 @@
     },
     "createdAt": "2026-10-20T10:15:00.000Z",
     "updatedAt": "2026-10-25T14:30:00.000Z",
-    "clicks": 1422,
+    "clicks": 1423,
     "stats": {
       "iosClicks": 891,
       "androidClicks": 471,
-      "desktopClicks": 60,
+      "desktopClicks": 61,
       "inAppBreaks": {
         "instagram": 941,
         "tiktok": 321,
@@ -28,7 +28,7 @@
         "other": 15
       },
       "appOpens": 0,
-      "browserEscapes": 1382
+      "browserEscapes": 1383
     }
   },
   {

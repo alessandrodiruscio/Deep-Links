@@ -49,8 +49,16 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   const rawBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const effectiveBaseUrl = customBaseUrl || rawBaseUrl;
 
+  const getShareableUrl = (link: DeepLink) => {
+    const builtInSlugs = ['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus'];
+    if (builtInSlugs.includes((link.slug || '').toLowerCase())) {
+      return `${effectiveBaseUrl}/l/${link.slug}`;
+    }
+    return `${effectiveBaseUrl}/l/${link.slug}?u=${encodeURIComponent(link.originalUrl || '')}`;
+  };
+
   const handleCopy = (link: DeepLink) => {
-    const fullShortUrl = `${effectiveBaseUrl}/l/${link.slug}`;
+    const fullShortUrl = getShareableUrl(link);
     navigator.clipboard.writeText(fullShortUrl);
     setCopiedId(link.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -65,10 +73,13 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   };
 
   const filteredLinks = links.filter((l) => {
+    const title = l?.title || '';
+    const slug = l?.slug || '';
+    const originalUrl = l?.originalUrl || '';
     const matchesSearch =
-      l.title.toLowerCase().includes(search.toLowerCase()) ||
-      l.slug.toLowerCase().includes(search.toLowerCase()) ||
-      l.originalUrl.toLowerCase().includes(search.toLowerCase());
+      title.toLowerCase().includes(search.toLowerCase()) ||
+      slug.toLowerCase().includes(search.toLowerCase()) ||
+      originalUrl.toLowerCase().includes(search.toLowerCase());
     const matchesPlatform = platformFilter === 'all' || l.platform === platformFilter;
     return matchesSearch && matchesPlatform;
   });
@@ -203,11 +214,12 @@ export const LinksTable: React.FC<LinksTableProps> = ({
             {filteredLinks.map((link) => {
               const fullShortUrl = `${effectiveBaseUrl}/l/${link.slug}`;
               const isCopied = copiedId === link.id;
+              const appOpens = link.stats?.appOpens ?? 0;
+              const browserEscapes = link.stats?.browserEscapes ?? 0;
+              const clicks = link.clicks ?? 0;
               const breakoutRate =
-                link.clicks > 0
-                  ? Math.round(
-                      ((link.stats.appOpens + link.stats.browserEscapes) / link.clicks) * 100
-                    )
+                clicks > 0
+                  ? Math.round(((appOpens + browserEscapes) / clicks) * 100)
                   : 100;
 
               return (
