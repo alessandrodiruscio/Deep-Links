@@ -59,4 +59,5 @@ export interface DeepLinkProtocols {
   webFallback: string;
   recommendedMode: TargetMode;
   explanation: string;
+  isApp?: boolean;
 }

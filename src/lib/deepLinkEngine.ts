@@ -129,15 +129,19 @@ export function generateProtocols(
     }
 
     case 'youtube': {
+      const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+      const videoId = ytMatch && ytMatch[1] ? ytMatch[1] : '';
       return {
         platform: 'youtube',
         platformName: 'YouTube',
-        iosScheme: `vnd.youtube://${hostAndPath}`,
-        androidIntent: `intent://${hostAndPath}#Intent;package=com.google.android.youtube;scheme=https;end;`,
+        iosScheme: videoId ? `vnd.youtube://${videoId}` : `vnd.youtube://${hostAndPath}`,
+        androidIntent: videoId
+          ? `intent://www.youtube.com/watch?v=${videoId}#Intent;package=com.google.android.youtube;scheme=https;end;`
+          : `intent://${hostAndPath}#Intent;package=com.google.android.youtube;scheme=https;end;`,
         webFallback: url,
         recommendedMode: 'native_app',
         explanation:
-          'Apre l’app YouTube con account Google attivo per iscrizioni, like e commenti istantanei.',
+          'Apre direttamente il video nell’app YouTube per iscrizioni, like e commenti istantanei.',
       };
     }
 

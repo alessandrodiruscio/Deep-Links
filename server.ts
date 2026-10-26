@@ -287,48 +287,25 @@ async function startServer() {
     const sanitizedTitle = (link.title || 'Reindirizzamento...').replace(/"/g, '&quot;');
     const sanitizedDesc = (link.description || '').replace(/"/g, '&quot;');
     const sanitizedImg = (link.imageUrl || '').replace(/"/g, '&quot;');
-    const isGenericWeb = link.platform === 'generic' || link.targetMode === 'system_browser';
-
-    let hostAndPath = '';
-    try {
-      const parsed = new URL(protocols.webFallback);
-      hostAndPath = parsed.host + parsed.pathname + parsed.search;
-    } catch {
-      hostAndPath = protocols.webFallback.replace(/^https?:\/\//, '');
-    }
+    const isApp = protocols.platform !== 'generic';
+    const primaryTarget = isAndroid
+      ? protocols.androidIntent
+      : (isApp ? protocols.iosScheme : protocols.webFallback);
 
     const html = `<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>${sanitizedTitle}</title>
-  <meta name="description" content="${sanitizedDesc}">
-  <meta property="og:title" content="${sanitizedTitle}">
-  <meta property="og:description" content="${sanitizedDesc}">
-  ${sanitizedImg ? `<meta property="og:image" content="${sanitizedImg}">` : ''}
-  <meta property="og:url" content="${finalTargetUrl}">
-  <meta property="og:type" content="website">
+  <meta http-equiv="refresh" content="0; url=${primaryTarget}">
+  <title>Apertura in corso...</title>
   <meta name="robots" content="noindex, nofollow">
-
   <style>
-    :root {
-      --bg: #090d16;
-      --card-bg: #111827;
-      --border: #1f2937;
-      --text: #f3f4f6;
-      --text-muted: #94a3b8;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --accent: #38bdf8;
-      --emerald: #10b981;
-      --amber: #fbbf24;
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
+      background: #090d16;
+      color: #f1f5f9;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -339,390 +316,175 @@ async function startServer() {
       text-align: center;
       -webkit-font-smoothing: antialiased;
     }
-    .insta-guide-banner {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      z-index: 9999;
-      animation: pulseGuide 2s infinite ease-in-out;
-    }
-    .insta-guide-content {
-      background: #1e1b4b;
-      border: 1.5px solid #818cf8;
-      border-radius: 9999px;
-      padding: 8px 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 18px rgba(99,102,241,0.4);
-    }
-    .insta-guide-text {
-      text-align: right;
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 28px;
+      padding: 36px 24px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
       display: flex;
       flex-direction: column;
+      align-items: center;
     }
-    .insta-guide-text strong {
-      font-size: 12px;
-      color: var(--amber);
-      line-height: 1.2;
-    }
-    .insta-guide-text span {
-      font-size: 10px;
-      color: #cbd5e1;
-    }
-    .insta-guide-arrow {
-      font-size: 18px;
-      font-weight: 900;
-      color: var(--amber);
-      line-height: 1;
-    }
-    @keyframes pulseGuide {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 30px 22px;
-      max-width: 430px;
-      width: 100%;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+    .icon-container {
       position: relative;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      color: var(--accent);
-      padding: 5px 14px;
-      border-radius: 9999px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 18px;
-    }
-    .badge.warn {
-      background: rgba(251, 191, 36, 0.12);
-      border-color: rgba(251, 191, 36, 0.25);
-      color: var(--amber);
-    }
-    .icon-hero {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      background: rgba(79, 70, 229, 0.15);
-      border: 1.5px solid rgba(99, 102, 241, 0.3);
+      width: 72px;
+      height: 72px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 16px;
-      color: #818cf8;
+      margin-bottom: 22px;
     }
-    h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; line-height: 1.3; }
-    p.desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; word-break: break-word; }
-    
-    .steps-container {
-      background: rgba(15, 23, 42, 0.7);
-      border: 1px solid rgba(51, 65, 85, 0.6);
-      border-radius: 16px;
-      padding: 14px 16px;
-      margin-bottom: 20px;
-      text-align: left;
-    }
-    .step-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    .step-item:last-child { margin-bottom: 0; }
-    .step-badge {
-      width: 22px;
-      height: 22px;
+    .pulse-ring {
+      position: absolute;
+      inset: -6px;
       border-radius: 50%;
-      background: #4f46e5;
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
+      border: 2px solid #6366f1;
+      opacity: 0.4;
+      animation: pulse 1.6s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+    }
+    .icon-box {
+      width: 100%;
+      height: 100%;
+      border-radius: 20px;
+      background: #1e1b4b;
+      border: 1.5px solid rgba(99, 102, 241, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
-      margin-top: 1px;
+      color: #818cf8;
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.25);
     }
-    .step-content {
-      font-size: 13px;
-      color: #e2e8f0;
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+    h2 {
+      font-size: 21px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    p.desc {
+      font-size: 13.5px;
+      color: #94a3b8;
       line-height: 1.4;
+      margin-bottom: 24px;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .step-content strong {
-      color: #fbbf24;
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: #1e293b;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 24px;
     }
-
+    .progress-fill {
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg, #6366f1, #38bdf8);
+      border-radius: 9999px;
+      animation: progressAnim 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes progressAnim {
+      0% { transform: translateX(-10%); width: 30%; }
+      100% { transform: translateX(200%); width: 60%; }
+    }
     .btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      padding: 14px 18px;
-      border-radius: 12px;
+      padding: 15px 22px;
+      border-radius: 14px;
       font-size: 15px;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       box-sizing: border-box;
       transition: all 0.2s ease;
-      margin-top: 10px;
+      background: #4f46e5;
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.45);
       border: none;
     }
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    .btn:active {
+      transform: scale(0.98);
+      background: #4338ca;
     }
-    .btn-primary:active { transform: scale(0.98); }
-    .btn-emerald {
-      background: #059669;
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
-    }
-    .btn-emerald:active { transform: scale(0.98); }
-    .btn-chrome {
-      background: rgba(255, 255, 255, 0.08);
-      color: #f1f5f9;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      font-size: 13.5px;
-    }
-    .btn-chrome:active { background: rgba(255, 255, 255, 0.14); }
-    .btn-subtle {
-      display: inline-block;
-      margin-top: 16px;
-      font-size: 12.5px;
-      color: #64748b;
-      text-decoration: underline;
-      cursor: pointer;
-      background: none;
-      border: none;
-    }
-    .copy-success-banner {
-      display: none;
-      margin-top: 12px;
-      padding: 10px 14px;
-      background: rgba(16, 185, 129, 0.15);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 10px;
+    .subtext {
+      margin-top: 14px;
       font-size: 12px;
-      color: #34d399;
-      font-weight: 500;
-      animation: fadeIn 0.3s ease;
+      color: #64748b;
     }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
-
-  ${
-    isInApp && isIOS && isGenericWeb
-      ? `<div class="insta-guide-banner">
-          <div class="insta-guide-content">
-            <div class="insta-guide-text">
-              <strong>Tocca i 3 puntini (···) in alto</strong>
-              <span>per uscire da Instagram e aprire Safari</span>
-            </div>
-            <div class="insta-guide-arrow">↗</div>
-          </div>
-        </div>`
-      : ''
-  }
-
   <div class="card">
-    <div class="badge ${isInApp ? 'warn' : ''}">
-      ${
-        isInApp
-          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Browser In-App Instagram Rilevato`
-          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> ${protocols.platformName}`
-      }
+    <div class="icon-container">
+      <div class="pulse-ring"></div>
+      <div class="icon-box">
+        ${
+          link.platform === 'youtube'
+            ? `<svg width="34" height="34" viewBox="0 0 24 24" fill="#ef4444"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
+            : link.platform === 'amazon'
+            ? `<svg width="34" height="34" viewBox="0 0 24 24" fill="#f59e0b"><path d="M13.9 14.1c-1.8 1.4-4.3 2.1-6.6 2.1-3.1 0-5.9-1.2-8-3.2-.2-.2-.2-.5 0-.7.3-.2.6-.2.8 0 1.9 1.8 4.4 2.8 7.2 2.8 2 0 4.2-.6 5.8-1.8.3-.2.7-.1.9.2.2.3.1.7-.1.8zm2.4-1c-.2-.3-.5-.4-.8-.2-.3.2-.4.5-.2.8.4.8.6 1.7.6 2.6 0 .4-.3.7-.7.7s-.7-.3-.7-.7c0-1.2-.3-2.3-.9-3.3-.2-.3-.1-.7.2-.9.3-.2.7-.1.9.2.7 1.2 1.1 2.6 1.1 4 0 .9-.7 1.7-1.7 1.7s-1.7-.7-1.7-1.7c0-.8-.2-1.6-.5-2.3z"/></svg>`
+            : link.platform === 'spotify'
+            ? `<svg width="34" height="34" viewBox="0 0 24 24" fill="#10b981"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>`
+            : `<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>`
+        }
+      </div>
     </div>
 
-    ${
-      isIOS && isInApp && isGenericWeb
-        ? `<!-- Dedicato a iOS + In-App per Siti Generici / E-commerce -->
-          <div class="icon-hero">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-          </div>
-          <h2>Apri questo link in Safari</h2>
-          <p class="desc">Apple impedisce a Instagram di aprire Safari automaticamente. Per usare le tue password salvate e Apple Pay:</p>
+    <h2>Apertura di ${protocols.platformName}...</h2>
+    <p class="desc">${sanitizedTitle}</p>
 
-          <div class="steps-container">
-            <div class="step-item">
-              <div class="step-badge">1</div>
-              <div class="step-content">Tocca i <strong>3 puntini (···)</strong> in alto a destra sullo schermo di Instagram.</div>
-            </div>
-            <div class="step-item">
-              <div class="step-badge">2</div>
-              <div class="step-content">Seleziona <strong>"Apri nel browser esterno"</strong> o <strong>"Apri in Safari"</strong>.</div>
-            </div>
-          </div>
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
 
-          <button id="copyBtn" class="btn btn-emerald">
-            📋 Copia Link per Safari
-          </button>
-          <div id="copySuccess" class="copy-success-banner">
-            ✓ Link copiato negli appunti! Ora apri Safari e incolla.
-          </div>
-
-          <button id="chromeIosBtn" class="btn btn-chrome">
-            🌐 Hai Google Chrome? Tocca per aprire in Chrome
-          </button>
-
-          <a href="${finalTargetUrl}" class="btn-subtle">
-            Oppure continua qui nel browser interno di Instagram &rarr;
-          </a>`
-        : isAndroid
-        ? `<!-- Dedicato ad Android (Supporta Chrome Intent) -->
-          <div class="icon-hero">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          </div>
-          <h2>${isInApp ? 'Apri fuori da Instagram' : 'Pronto per l’apertura'}</h2>
-          <p class="desc">${sanitizedTitle}</p>
-
-          <button id="androidPrimaryBtn" class="btn btn-primary">
-            ${
-              link.targetMode === 'native_app' && link.platform !== 'generic'
-                ? `🚀 Apri nell'App Ufficiale (${protocols.platformName})`
-                : '🚀 Apri in Google Chrome'
-            }
-          </button>
-
-          <button id="copyBtn" class="btn btn-chrome">
-            📋 Copia Link
-          </button>
-          <div id="copySuccess" class="copy-success-banner">
-            ✓ Link copiato negli appunti!
-          </div>
-
-          <a href="${finalTargetUrl}" class="btn-subtle">
-            Continua nel browser interno &rarr;
-          </a>`
-        : `<!-- iOS con App Nativa (Amazon, YouTube, Spotify) o Standard Mobile -->
-          <div class="icon-hero">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          </div>
-          <h2>Apri nell’App Ufficiale</h2>
-          <p class="desc">${sanitizedTitle}</p>
-
-          <button id="nativeAppBtn" class="btn btn-primary">
-            🚀 Apri in ${protocols.platformName}
-          </button>
-
-          <button id="copyBtn" class="btn btn-chrome">
-            📋 Copia Link
-          </button>
-          <div id="copySuccess" class="copy-success-banner">
-            ✓ Link copiato negli appunti!
-          </div>
-
-          <a href="${finalTargetUrl}" class="btn-subtle">
-            Oppure apri nel browser &rarr;
-          </a>`
-    }
+    <a href="${primaryTarget}" id="launchBtn" class="btn">
+      Apri Subito &rarr;
+    </a>
+    <span class="subtext">Reindirizzamento istantaneo automatico...</span>
   </div>
 
   <script>
     (function() {
-      var isAndroid = ${isAndroid};
-      var isIOS = ${isIOS};
-      var isInApp = ${isInApp};
-      var isGenericWeb = ${isGenericWeb};
-      var platform = ${JSON.stringify(link.platform)};
-      var androidIntent = ${JSON.stringify(protocols.androidIntent)};
-      var androidBrowserIntent = ${JSON.stringify(protocols.androidBrowserIntent || protocols.androidIntent)};
-      var iosScheme = ${JSON.stringify(protocols.iosScheme)};
-      var iosChromeScheme = ${JSON.stringify(protocols.iosChromeScheme || '')};
-      var fallback = ${JSON.stringify(finalTargetUrl)};
-      var hostAndPath = ${JSON.stringify(hostAndPath)};
+      var targetUrl = ${JSON.stringify(primaryTarget)};
+      var fallbackUrl = ${JSON.stringify(protocols.webFallback)};
+      var isApp = ${Boolean(isApp)};
 
-      // 1. Android Breakout Execution
-      var androidPrimaryBtn = document.getElementById('androidPrimaryBtn');
-      if (androidPrimaryBtn) {
-        androidPrimaryBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          window.location.href = androidIntent;
-          setTimeout(function() {
-            window.location.href = androidBrowserIntent;
-          }, 600);
-        });
-
-        // If in-app on Android, attempt intent automatically
-        if (isInApp) {
-          setTimeout(function() {
-            window.location.href = androidIntent;
-          }, 250);
-        }
+      // 1. Immediate trigger via replace & href
+      try {
+        window.location.replace(targetUrl);
+      } catch (e) {
+        window.location.href = targetUrl;
       }
 
-      // 2. iOS Native App Launcher (Amazon, YouTube, Spotify)
-      var nativeAppBtn = document.getElementById('nativeAppBtn');
-      if (nativeAppBtn) {
-        nativeAppBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          if (platform === 'amazon') {
-            window.location.href = 'com.amazon.mobile.shopping://' + hostAndPath;
-            setTimeout(function() {
-              window.location.href = 'amazon://' + hostAndPath;
-            }, 300);
-          } else {
-            window.location.href = iosScheme;
-          }
-        });
+      // 2. Programmatic click on button
+      var btn = document.getElementById('launchBtn');
+      if (btn && typeof btn.click === 'function') {
+        try { btn.click(); } catch (e) {}
       }
 
-      // 3. iOS Chrome Button
-      var chromeIosBtn = document.getElementById('chromeIosBtn');
-      if (chromeIosBtn) {
-        chromeIosBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          window.location.href = 'googlechromes://' + hostAndPath;
-          setTimeout(function() {
-            window.location.href = 'googlechrome://' + hostAndPath;
-          }, 350);
-        });
-      }
-
-      // 4. Clipboard Copy Button
-      var copyBtn = document.getElementById('copyBtn');
-      var copySuccess = document.getElementById('copySuccess');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', function(e) {
-          e.preventDefault();
-          function showSuccess() {
-            if (copySuccess) copySuccess.style.display = 'block';
-            copyBtn.innerHTML = '✓ Link Copiato!';
-            setTimeout(function() {
-              if (copySuccess) copySuccess.style.display = 'none';
-              copyBtn.innerHTML = isIOS && isGenericWeb ? '📋 Copia Link per Safari' : '📋 Copia Link';
-            }, 4000);
+      // 3. Fallback timer: if app is not installed, transition smoothly to web
+      if (isApp) {
+        setTimeout(function() {
+          try {
+            window.location.replace(fallbackUrl);
+          } catch (e) {
+            window.location.href = fallbackUrl;
           }
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(fallback).then(showSuccess).catch(fallbackCopy);
-          } else {
-            fallbackCopy();
-          }
-
-          function fallbackCopy() {
-            var inp = document.createElement('input');
-            inp.setAttribute('value', fallback);
-            document.body.appendChild(inp);
-            inp.select();
-            document.execCommand('copy');
-            document.body.removeChild(inp);
-            showSuccess();
-          }
-        });
+        }, 2200);
       }
     })();
   </script>
