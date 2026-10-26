@@ -1,0 +1,8 @@
+{
+  "name": "DeepDirect - Deep Link & In-App Browser Escape Engine",
+  "description": "Crea deep links intelligenti che aprono qualsiasi pagina web o app direttamente nell'applicazione nativa o nel browser di sistema predefinito (Safari/Chrome), bypassando il webview di Instagram, TikTok e Facebook.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
