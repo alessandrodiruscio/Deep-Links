@@ -17,7 +17,19 @@ import { DeepLink } from './types/deepLink';
 import { detectPlatform, slugify } from './lib/deepLinkEngine';
 
 export default function App() {
-  const [links, setLinks] = useState<DeepLink[]>(INITIAL_SAMPLE_LINKS);
+  const [links, setLinks] = useState<DeepLink[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('deepdirect_saved_links');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch {}
+      }
+    }
+    return INITIAL_SAMPLE_LINKS;
+  });
+
   const [currentTab, setCurrentTab] = useState<'links' | 'simulator' | 'guide' | 'analytics' | 'deploy'>('links');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<DeepLink | null>(null);
@@ -30,6 +42,12 @@ export default function App() {
     }
     return '';
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('deepdirect_saved_links', JSON.stringify(links));
+    }
+  }, [links]);
 
   const handleSaveCustomBaseUrl = (newUrl: string) => {
     setCustomBaseUrl(newUrl);

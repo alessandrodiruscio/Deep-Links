@@ -153,10 +153,19 @@ export function generateProtocols(
     }
 
     case 'instagram': {
-      // Extract username if profile
-      const userMatch = url.match(/instagram\.com\/([a-zA-Z0-9._]+)/);
-      const username = userMatch ? userMatch[1].replace(/^(p|reel|stories)\/.*$/, '') : '';
-      const iosScheme = username ? `instagram://user?username=${username}` : `instagram://${hostAndPath}`;
+      const cleanPath = url.replace(/^https?:\/\/(?:www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+      const parts = cleanPath.split(/[/?#]/);
+      let iosScheme = `instagram://${hostAndPath}`;
+
+      if (parts[0] === 'p' && parts[1]) {
+        iosScheme = `instagram://media?id=${parts[1]}`;
+      } else if (parts[0] === 'reel' && parts[1]) {
+        iosScheme = `instagram://reel?shortcode=${parts[1]}`;
+      } else if (parts[0] === 'stories' && parts[1]) {
+        iosScheme = `instagram://story?username=${parts[1]}`;
+      } else if (parts[0] && !['explore', 'direct', 'reels', 'tv', 'accounts'].includes(parts[0].toLowerCase())) {
+        iosScheme = `instagram://user?username=${parts[0]}`;
+      }
 
       return {
         platform: 'instagram',
