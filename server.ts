@@ -275,8 +275,11 @@ async function startServer() {
     const finalTargetUrl = applyUtm(link.originalUrl, link.utm);
     const protocols = generateProtocols(finalTargetUrl, link.targetMode);
 
-    // If opened on Desktop browser (non-mobile and non-in-app), immediate redirect
+    // If opened on Desktop browser, OR on standard mobile browser (not in-app) for generic websites: direct redirect
     if (!isIOS && !isAndroid) {
+      return res.redirect(finalTargetUrl);
+    }
+    if (!isInApp && (link.platform === 'generic' || link.targetMode === 'system_browser')) {
       return res.redirect(finalTargetUrl);
     }
 
@@ -284,6 +287,15 @@ async function startServer() {
     const sanitizedTitle = (link.title || 'Reindirizzamento...').replace(/"/g, '&quot;');
     const sanitizedDesc = (link.description || '').replace(/"/g, '&quot;');
     const sanitizedImg = (link.imageUrl || '').replace(/"/g, '&quot;');
+    const isGenericWeb = link.platform === 'generic' || link.targetMode === 'system_browser';
+
+    let hostAndPath = '';
+    try {
+      const parsed = new URL(protocols.webFallback);
+      hostAndPath = parsed.host + parsed.pathname + parsed.search;
+    } catch {
+      hostAndPath = protocols.webFallback.replace(/^https?:\/\//, '');
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="it">
@@ -307,7 +319,10 @@ async function startServer() {
       --text: #f3f4f6;
       --text-muted: #94a3b8;
       --primary: #4f46e5;
+      --primary-hover: #4338ca;
       --accent: #38bdf8;
+      --emerald: #10b981;
+      --amber: #fbbf24;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -326,8 +341,8 @@ async function startServer() {
     }
     .insta-guide-banner {
       position: fixed;
-      top: 14px;
-      right: 14px;
+      top: 12px;
+      right: 12px;
       z-index: 9999;
       animation: pulseGuide 2s infinite ease-in-out;
     }
@@ -348,7 +363,7 @@ async function startServer() {
     }
     .insta-guide-text strong {
       font-size: 12px;
-      color: #fbbf24;
+      color: var(--amber);
       line-height: 1.2;
     }
     .insta-guide-text span {
@@ -358,7 +373,7 @@ async function startServer() {
     .insta-guide-arrow {
       font-size: 18px;
       font-weight: 900;
-      color: #fbbf24;
+      color: var(--amber);
       line-height: 1;
     }
     @keyframes pulseGuide {
@@ -369,8 +384,8 @@ async function startServer() {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: 24px;
-      padding: 32px 24px;
-      max-width: 420px;
+      padding: 30px 22px;
+      max-width: 430px;
       width: 100%;
       box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
       position: relative;
@@ -382,42 +397,77 @@ async function startServer() {
       background: rgba(56, 189, 248, 0.12);
       border: 1px solid rgba(56, 189, 248, 0.25);
       color: var(--accent);
-      padding: 4px 12px;
+      padding: 5px 14px;
       border-radius: 9999px;
       font-size: 12px;
       font-weight: 600;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
-    .spinner {
-      width: 44px;
-      height: 44px;
-      border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #6366f1;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
+    .badge.warn {
+      background: rgba(251, 191, 36, 0.12);
+      border-color: rgba(251, 191, 36, 0.25);
+      color: var(--amber);
     }
-    .success-ring {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      background: rgba(16, 185, 129, 0.15);
-      border: 2px solid #10b981;
+    .icon-hero {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: rgba(79, 70, 229, 0.15);
+      border: 1.5px solid rgba(99, 102, 241, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 16px;
+      color: #818cf8;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
-    p.desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin-bottom: 22px; word-break: break-word; }
+    h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; line-height: 1.3; }
+    p.desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; word-break: break-word; }
+    
+    .steps-container {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .step-item:last-child { margin-bottom: 0; }
+    .step-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #4f46e5;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-content {
+      font-size: 13px;
+      color: #e2e8f0;
+      line-height: 1.4;
+    }
+    .step-content strong {
+      color: #fbbf24;
+    }
+
     .btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      padding: 14px 20px;
+      padding: 14px 18px;
       border-radius: 12px;
       font-size: 15px;
       font-weight: 600;
@@ -434,51 +484,53 @@ async function startServer() {
       box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
     }
     .btn-primary:active { transform: scale(0.98); }
-    .btn-copy {
-      background: rgba(255,255,255,0.06);
-      color: #e2e8f0;
-      border: 1px solid rgba(255,255,255,0.15);
+    .btn-emerald {
+      background: #059669;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
     }
-    .btn-copy:active { background: rgba(255,255,255,0.1); }
+    .btn-emerald:active { transform: scale(0.98); }
+    .btn-chrome {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 13.5px;
+    }
+    .btn-chrome:active { background: rgba(255, 255, 255, 0.14); }
     .btn-subtle {
       display: inline-block;
-      margin-top: 14px;
-      font-size: 13px;
+      margin-top: 16px;
+      font-size: 12.5px;
       color: #64748b;
-      text-decoration: none;
+      text-decoration: underline;
+      cursor: pointer;
+      background: none;
+      border: none;
     }
-    .guide-box {
-      margin-top: 22px;
-      background: rgba(251, 191, 36, 0.08);
-      border: 1px dashed rgba(251, 191, 36, 0.3);
-      border-radius: 12px;
-      padding: 14px;
-      text-align: left;
-    }
-    .guide-title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #fbbf24;
-      margin-bottom: 6px;
-    }
-    .guide-desc {
+    .copy-success-banner {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 10px;
       font-size: 12px;
-      color: #cbd5e1;
-      line-height: 1.5;
+      color: #34d399;
+      font-weight: 500;
+      animation: fadeIn 0.3s ease;
     }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
   </style>
 </head>
 <body>
+
   ${
-    isInApp && isIOS
+    isInApp && isIOS && isGenericWeb
       ? `<div class="insta-guide-banner">
           <div class="insta-guide-content">
             <div class="insta-guide-text">
               <strong>Tocca i 3 puntini (···) in alto</strong>
-              <span>per aprire in Safari</span>
+              <span>per uscire da Instagram e aprire Safari</span>
             </div>
             <div class="insta-guide-arrow">↗</div>
           </div>
@@ -487,57 +539,95 @@ async function startServer() {
   }
 
   <div class="card">
-    <div class="badge">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-      ${protocols.platformName}
-    </div>
-
-    <div id="loadingBlock">
-      <div class="spinner"></div>
-      <h2>Apertura in corso...</h2>
-      <p class="desc">${sanitizedTitle}</p>
-    </div>
-
-    <div id="actionBlock" style="display: none;">
-      <div class="success-ring">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <h2>${isInApp ? 'Continua fuori da Instagram' : 'Pronto per l’apertura'}</h2>
-      <p class="desc">${sanitizedTitle}</p>
-    </div>
-
-    <button id="primaryBtn" class="btn btn-primary">
+    <div class="badge ${isInApp ? 'warn' : ''}">
       ${
-        isAndroid
-          ? (link.targetMode === 'native_app' && link.platform !== 'generic' ? '🚀 Apri nell’App Ufficiale' : '🚀 Apri in Google Chrome')
-          : (link.targetMode === 'native_app' && link.platform !== 'generic' ? '🚀 Apri nell’App Ufficiale' : '🚀 Apri Subito')
+        isInApp
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Browser In-App Instagram Rilevato`
+          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg> ${protocols.platformName}`
       }
-    </button>
-
-    <button id="copyBtn" class="btn btn-copy">
-      📋 Copia Link per Safari
-    </button>
-
-    <a href="${finalTargetUrl}" class="btn-subtle">
-      Continua nel browser interno di Instagram
-    </a>
+    </div>
 
     ${
-      isInApp
-        ? `<div class="guide-box">
-            <div class="guide-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Come aprire nel browser esterno:
+      isIOS && isInApp && isGenericWeb
+        ? `<!-- Dedicato a iOS + In-App per Siti Generici / E-commerce -->
+          <div class="icon-hero">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+          </div>
+          <h2>Apri questo link in Safari</h2>
+          <p class="desc">Apple impedisce a Instagram di aprire Safari automaticamente. Per usare le tue password salvate e Apple Pay:</p>
+
+          <div class="steps-container">
+            <div class="step-item">
+              <div class="step-badge">1</div>
+              <div class="step-content">Tocca i <strong>3 puntini (···)</strong> in alto a destra sullo schermo di Instagram.</div>
             </div>
-            <p class="guide-desc">
-              ${
-                isIOS
-                  ? 'Tocca i <strong>3 puntini (···)</strong> in alto a destra su Instagram e premi <strong>"Apri nel browser"</strong> o <strong>"Apri in Safari"</strong>.'
-                  : 'Se la pagina non si apre automaticamente, tocca il pulsante blu in alto per aprire Google Chrome.'
-              }
-            </p>
-          </div>`
-        : ''
+            <div class="step-item">
+              <div class="step-badge">2</div>
+              <div class="step-content">Seleziona <strong>"Apri nel browser esterno"</strong> o <strong>"Apri in Safari"</strong>.</div>
+            </div>
+          </div>
+
+          <button id="copyBtn" class="btn btn-emerald">
+            📋 Copia Link per Safari
+          </button>
+          <div id="copySuccess" class="copy-success-banner">
+            ✓ Link copiato negli appunti! Ora apri Safari e incolla.
+          </div>
+
+          <button id="chromeIosBtn" class="btn btn-chrome">
+            🌐 Hai Google Chrome? Tocca per aprire in Chrome
+          </button>
+
+          <a href="${finalTargetUrl}" class="btn-subtle">
+            Oppure continua qui nel browser interno di Instagram &rarr;
+          </a>`
+        : isAndroid
+        ? `<!-- Dedicato ad Android (Supporta Chrome Intent) -->
+          <div class="icon-hero">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+          </div>
+          <h2>${isInApp ? 'Apri fuori da Instagram' : 'Pronto per l’apertura'}</h2>
+          <p class="desc">${sanitizedTitle}</p>
+
+          <button id="androidPrimaryBtn" class="btn btn-primary">
+            ${
+              link.targetMode === 'native_app' && link.platform !== 'generic'
+                ? `🚀 Apri nell'App Ufficiale (${protocols.platformName})`
+                : '🚀 Apri in Google Chrome'
+            }
+          </button>
+
+          <button id="copyBtn" class="btn btn-chrome">
+            📋 Copia Link
+          </button>
+          <div id="copySuccess" class="copy-success-banner">
+            ✓ Link copiato negli appunti!
+          </div>
+
+          <a href="${finalTargetUrl}" class="btn-subtle">
+            Continua nel browser interno &rarr;
+          </a>`
+        : `<!-- iOS con App Nativa (Amazon, YouTube, Spotify) o Standard Mobile -->
+          <div class="icon-hero">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </div>
+          <h2>Apri nell’App Ufficiale</h2>
+          <p class="desc">${sanitizedTitle}</p>
+
+          <button id="nativeAppBtn" class="btn btn-primary">
+            🚀 Apri in ${protocols.platformName}
+          </button>
+
+          <button id="copyBtn" class="btn btn-chrome">
+            📋 Copia Link
+          </button>
+          <div id="copySuccess" class="copy-success-banner">
+            ✓ Link copiato negli appunti!
+          </div>
+
+          <a href="${finalTargetUrl}" class="btn-subtle">
+            Oppure apri nel browser &rarr;
+          </a>`
     }
   </div>
 
@@ -546,84 +636,94 @@ async function startServer() {
       var isAndroid = ${isAndroid};
       var isIOS = ${isIOS};
       var isInApp = ${isInApp};
+      var isGenericWeb = ${isGenericWeb};
       var platform = ${JSON.stringify(link.platform)};
-      var targetMode = ${JSON.stringify(link.targetMode)};
       var androidIntent = ${JSON.stringify(protocols.androidIntent)};
       var androidBrowserIntent = ${JSON.stringify(protocols.androidBrowserIntent || protocols.androidIntent)};
       var iosScheme = ${JSON.stringify(protocols.iosScheme)};
+      var iosChromeScheme = ${JSON.stringify(protocols.iosChromeScheme || '')};
       var fallback = ${JSON.stringify(finalTargetUrl)};
+      var hostAndPath = ${JSON.stringify(hostAndPath)};
 
-      var loadingBlock = document.getElementById('loadingBlock');
-      var actionBlock = document.getElementById('actionBlock');
-      var primaryBtn = document.getElementById('primaryBtn');
-      var copyBtn = document.getElementById('copyBtn');
-
-      function performRedirect() {
-        if (isAndroid) {
-          window.location.href = androidIntent;
-        } else if (isIOS && platform !== 'generic' && targetMode !== 'system_browser') {
-          window.location.href = iosScheme;
-        }
-      }
-
-      // 1. Initial attempt
-      performRedirect();
-
-      // 2. STOP SPINNER AFTER 1.1 SECONDS:
-      // Eliminates the infinite loading screen loop
-      setTimeout(function() {
-        if (loadingBlock) loadingBlock.style.display = 'none';
-        if (actionBlock) actionBlock.style.display = 'block';
-      }, 1100);
-
-      // 3. Primary Button Click: breakout to Chrome or App
-      primaryBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        if (isAndroid) {
+      // 1. Android Breakout Execution
+      var androidPrimaryBtn = document.getElementById('androidPrimaryBtn');
+      if (androidPrimaryBtn) {
+        androidPrimaryBtn.addEventListener('click', function(e) {
+          e.preventDefault();
           window.location.href = androidIntent;
           setTimeout(function() {
             window.location.href = androidBrowserIntent;
           }, 600);
-        } else if (isIOS) {
-          if (platform !== 'generic' && targetMode !== 'system_browser') {
-            window.location.href = iosScheme;
-          } else {
-            window.location.href = fallback;
-          }
-        } else {
-          window.location.href = fallback;
+        });
+
+        // If in-app on Android, attempt intent automatically
+        if (isInApp) {
+          setTimeout(function() {
+            window.location.href = androidIntent;
+          }, 250);
         }
-      });
+      }
+
+      // 2. iOS Native App Launcher (Amazon, YouTube, Spotify)
+      var nativeAppBtn = document.getElementById('nativeAppBtn');
+      if (nativeAppBtn) {
+        nativeAppBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          if (platform === 'amazon') {
+            window.location.href = 'com.amazon.mobile.shopping://' + hostAndPath;
+            setTimeout(function() {
+              window.location.href = 'amazon://' + hostAndPath;
+            }, 300);
+          } else {
+            window.location.href = iosScheme;
+          }
+        });
+      }
+
+      // 3. iOS Chrome Button
+      var chromeIosBtn = document.getElementById('chromeIosBtn');
+      if (chromeIosBtn) {
+        chromeIosBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.location.href = 'googlechromes://' + hostAndPath;
+          setTimeout(function() {
+            window.location.href = 'googlechrome://' + hostAndPath;
+          }, 350);
+        });
+      }
 
       // 4. Clipboard Copy Button
-      copyBtn.addEventListener('click', function() {
-        function onCopied() {
-          copyBtn.style.background = '#059669';
-          copyBtn.style.borderColor = '#10b981';
-          copyBtn.innerHTML = '✓ Link Copiato! Incollalo in Safari';
-          setTimeout(function() {
-            copyBtn.style.background = '';
-            copyBtn.style.borderColor = '';
-            copyBtn.innerHTML = '📋 Copia Link per Safari';
-          }, 3500);
-        }
+      var copyBtn = document.getElementById('copyBtn');
+      var copySuccess = document.getElementById('copySuccess');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          function showSuccess() {
+            if (copySuccess) copySuccess.style.display = 'block';
+            copyBtn.innerHTML = '✓ Link Copiato!';
+            setTimeout(function() {
+              if (copySuccess) copySuccess.style.display = 'none';
+              copyBtn.innerHTML = isIOS && isGenericWeb ? '📋 Copia Link per Safari' : '📋 Copia Link';
+            }, 4000);
+          }
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(fallback).then(onCopied).catch(fallbackExecCopy);
-        } else {
-          fallbackExecCopy();
-        }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(fallback).then(showSuccess).catch(fallbackCopy);
+          } else {
+            fallbackCopy();
+          }
 
-        function fallbackExecCopy() {
-          var input = document.createElement('input');
-          input.setAttribute('value', fallback);
-          document.body.appendChild(input);
-          input.select();
-          document.execCommand('copy');
-          document.body.removeChild(input);
-          onCopied();
-        }
-      });
+          function fallbackCopy() {
+            var inp = document.createElement('input');
+            inp.setAttribute('value', fallback);
+            document.body.appendChild(inp);
+            inp.select();
+            document.execCommand('copy');
+            document.body.removeChild(inp);
+            showSuccess();
+          }
+        });
+      }
     })();
   </script>
 </body>

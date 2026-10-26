@@ -119,7 +119,7 @@ export function generateProtocols(
       return {
         platform: 'amazon',
         platformName: 'Amazon Shopping',
-        iosScheme: `com.amazon.mobile.shopping.web://${hostAndPath}`,
+        iosScheme: `com.amazon.mobile.shopping://${hostAndPath}`,
         androidIntent: `intent://${hostAndPath}#Intent;package=com.amazon.mShop.android.shopping;scheme=https;end;`,
         webFallback: url,
         recommendedMode: 'native_app',
