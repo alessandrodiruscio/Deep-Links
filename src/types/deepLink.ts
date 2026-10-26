@@ -51,7 +51,10 @@ export interface DeepLinkProtocols {
   platform: SupportedPlatform;
   platformName: string;
   iosScheme: string;
+  iosChromeScheme?: string;
   androidIntent: string;
+  androidChromeIntent?: string;
+  androidBrowserIntent?: string;
   universalLink?: string;
   webFallback: string;
   recommendedMode: TargetMode;

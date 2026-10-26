@@ -92,13 +92,20 @@ export function generateProtocols(
     fullPath = '/' + hostAndPath;
   }
 
+  const androidChromeIntent = `intent://${hostAndPath}#Intent;scheme=https;package=com.android.chrome;end;`;
+  const androidBrowserIntent = `intent://${hostAndPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;`;
+  const iosChromeScheme = `googlechrome://${hostAndPath}`;
+
   // If user explicitly asks for system_browser escape (force Safari/Chrome)
   if (targetMode === 'system_browser' || platform === 'generic') {
     return {
       platform,
       platformName: platform === 'generic' ? 'Pagina Web / E-Commerce' : getPlatformName(platform),
-      iosScheme: url, // Safari escape via bridge interstitial + x-safari-https trigger
-      androidIntent: `intent://${hostAndPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;`,
+      iosScheme: url,
+      iosChromeScheme,
+      androidIntent: androidChromeIntent, // Uses Chrome package on Android to break out of Instagram WebView
+      androidChromeIntent,
+      androidBrowserIntent,
       webFallback: url,
       recommendedMode: 'system_browser',
       explanation:
@@ -251,7 +258,10 @@ export function generateProtocols(
         platform: 'generic',
         platformName: 'Pagina Web / E-Commerce',
         iosScheme: url,
-        androidIntent: `intent://${hostAndPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;`,
+        iosChromeScheme,
+        androidIntent: androidChromeIntent,
+        androidChromeIntent,
+        androidBrowserIntent,
         webFallback: url,
         recommendedMode: 'system_browser',
         explanation:
