@@ -124,6 +124,22 @@ export const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({
     );
   }
 
+  if (!currentLink || links.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="p-12 text-center bg-slate-900 border border-slate-800 rounded-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center mx-auto mb-3">
+            <Smartphone className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-white mb-1">Nessun deep link da simulare</h3>
+          <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+            Crea il tuo primo deep link personalizzato per testare la simulazione in tempo reale di apertura su Instagram, TikTok o browser.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Intro banner */}

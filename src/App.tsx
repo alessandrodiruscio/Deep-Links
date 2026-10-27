@@ -13,7 +13,7 @@ import { HowItWorksGuide } from './components/HowItWorksGuide';
 import { DeployGuide } from './components/DeployGuide';
 import { LinkGeneratorModal } from './components/LinkGeneratorModal';
 import { QrCodeModal } from './components/QrCodeModal';
-import { INITIAL_SAMPLE_LINKS } from './lib/sampleLinks';
+import { INITIAL_SAMPLE_LINKS, PREDEFINED_SAMPLE_SLUGS } from './lib/sampleLinks';
 import { DeepLink } from './types/deepLink';
 import { detectPlatform, slugify } from './lib/deepLinkEngine';
 
@@ -54,13 +54,18 @@ export default function App() {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map(normalizeLink);
+          if (Array.isArray(parsed)) {
+            // Strictly exclude any predefined sample links
+            const userOnly = parsed
+              .filter((l: any) => !PREDEFINED_SAMPLE_SLUGS.has((l?.slug || '').toLowerCase()))
+              .map(normalizeLink);
+            localStorage.setItem('deepdirect_saved_links', JSON.stringify(userOnly));
+            return userOnly;
           }
         } catch {}
       }
     }
-    return INITIAL_SAMPLE_LINKS.map(normalizeLink);
+    return [];
   });
 
   const [currentTab, setCurrentTab] = useState<'links' | 'simulator' | 'guide' | 'analytics' | 'deploy'>('links');
@@ -145,16 +150,19 @@ export default function App() {
         const serverLinks = await res.json();
         if (Array.isArray(serverLinks)) {
           setLinks((prevLinks) => {
-            const builtInSlugs = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+            // Clean server links by excluding any sample links
+            const cleanServerLinks = serverLinks
+              .filter((s: any) => s && !PREDEFINED_SAMPLE_SLUGS.has((s.slug || '').toLowerCase()))
+              .map(normalizeLink);
 
             // Retain any custom user-created link already saved locally
             const userCustomLinks = prevLinks.filter(
-              (l) => !builtInSlugs.has((l.slug || '').toLowerCase())
+              (l) => !PREDEFINED_SAMPLE_SLUGS.has((l.slug || '').toLowerCase())
             );
 
             // Find user links that exist locally in browser but not on server yet
             const serverSlugSet = new Set(
-              serverLinks.map((s: any) => (s.slug || '').toLowerCase())
+              cleanServerLinks.map((s) => s.slug.toLowerCase())
             );
             const missingOnServer = userCustomLinks.filter(
               (ul) => !serverSlugSet.has((ul.slug || '').toLowerCase())
@@ -167,9 +175,8 @@ export default function App() {
 
             // Merge map: start with server links, then overlay user's custom links
             const map = new Map<string, DeepLink>();
-            for (const item of serverLinks) {
-              const norm = normalizeLink(item);
-              map.set(norm.slug.toLowerCase(), norm);
+            for (const item of cleanServerLinks) {
+              map.set(item.slug.toLowerCase(), item);
             }
             for (const userLink of userCustomLinks) {
               map.set(userLink.slug.toLowerCase(), userLink);

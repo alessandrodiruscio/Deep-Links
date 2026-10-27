@@ -97,21 +97,23 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+
 function loadLinks(): DeepLink[] {
   try {
     if (fs.existsSync(DATA_FILE)) {
       const data = fs.readFileSync(DATA_FILE, 'utf-8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((l: any) => !SAMPLE_SLUGS.has((l?.slug || '').toLowerCase()));
       }
     }
   } catch (err) {
     console.error('Error loading links data:', err);
   }
-  // Fallback to sample links
-  saveLinks(INITIAL_SAMPLE_LINKS);
-  return INITIAL_SAMPLE_LINKS;
+  // Default to empty array - only user links
+  saveLinks([]);
+  return [];
 }
 
 function saveLinks(links: DeepLink[]): void {
@@ -190,39 +192,31 @@ async function startServer() {
     }
   });
 
-  // List all deep links
+  // List all deep links (User-created only)
   app.get('/api/links', async (req: Request, res: Response) => {
     if (sqlClient) {
       try {
         await ensureTableExists();
         const rows = await sqlClient`SELECT * FROM public.deep_links ORDER BY created_at DESC LIMIT 200;`;
-        if (rows && rows.length > 0) {
-          const map = new Map<string, DeepLink>();
-          linksCache.forEach((l) => map.set(l.slug.toLowerCase(), l));
-          rows.forEach((row: any) => {
-            if (row.data) {
-              map.set(row.slug.toLowerCase(), row.data);
-            }
-          });
-          return res.json(Array.from(map.values()));
+        if (rows) {
+          const links = rows
+            .map((row: any) => row.data)
+            .filter((l: any) => l && !SAMPLE_SLUGS.has((l.slug || '').toLowerCase()));
+          return res.json(links);
         }
       } catch {}
     } else if (supabase) {
       try {
         const { data, error } = await supabase.from('deep_links').select('*');
-        if (!error && Array.isArray(data) && data.length > 0) {
-          const map = new Map<string, DeepLink>();
-          linksCache.forEach((l) => map.set(l.slug.toLowerCase(), l));
-          data.forEach((row: any) => {
-            if (row.data) {
-              map.set(row.slug.toLowerCase(), row.data);
-            }
-          });
-          return res.json(Array.from(map.values()));
+        if (!error && Array.isArray(data)) {
+          const links = data
+            .map((row: any) => row.data)
+            .filter((l: any) => l && !SAMPLE_SLUGS.has((l.slug || '').toLowerCase()));
+          return res.json(links);
         }
       } catch {}
     }
-    res.json(linksCache);
+    res.json(linksCache.filter((l) => !SAMPLE_SLUGS.has((l.slug || '').toLowerCase())));
   });
 
   // Get single link

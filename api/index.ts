@@ -71,82 +71,8 @@ interface DeepLink {
     browserEscapes: number;
   };
 }
-
-// Persistent initial sample links
-const LINKS_CACHE: DeepLink[] = [
-  {
-    id: 'link_1',
-    slug: 'mio-ecommerce',
-    originalUrl: 'https://alessandrodiruscio.com',
-    platform: 'generic',
-    targetMode: 'system_browser',
-    title: 'Alessandro Di Ruscio - Sito Ufficiale',
-    description: 'Bypass automatico WebView Instagram/TikTok per apertura in Safari e Chrome.',
-    clicks: 1420,
-    stats: {
-      iosClicks: 820,
-      androidClicks: 490,
-      desktopClicks: 110,
-      inAppBreaks: { instagram: 640, tiktok: 380, facebook: 190, whatsapp: 100, other: 110 },
-      appOpens: 940,
-      browserEscapes: 370,
-    },
-  },
-  {
-    id: 'link_2',
-    slug: 'amazon-tech',
-    originalUrl: 'https://www.amazon.it/dp/B08N5WRWNW',
-    platform: 'amazon',
-    targetMode: 'native_app',
-    title: 'Apple MacBook Air - Amazon',
-    description: 'Acquista direttamente nell’app Amazon con 1-Click.',
-    clicks: 2840,
-    stats: {
-      iosClicks: 1620,
-      androidClicks: 980,
-      desktopClicks: 240,
-      inAppBreaks: { instagram: 1200, tiktok: 850, facebook: 490, whatsapp: 210, other: 90 },
-      appOpens: 2310,
-      browserEscapes: 480,
-    },
-  },
-  {
-    id: 'link_3',
-    slug: 'canale-youtube',
-    originalUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    platform: 'youtube',
-    targetMode: 'native_app',
-    title: 'Video YouTube Ufficiale',
-    description: 'Guarda in alta definizione nell’app YouTube.',
-    clicks: 980,
-    stats: {
-      iosClicks: 520,
-      androidClicks: 380,
-      desktopClicks: 80,
-      inAppBreaks: { instagram: 420, tiktok: 310, facebook: 150, whatsapp: 60, other: 40 },
-      appOpens: 810,
-      browserEscapes: 140,
-    },
-  },
-  {
-    id: 'link_4',
-    slug: 'playlist-focus',
-    originalUrl: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
-    platform: 'spotify',
-    targetMode: 'native_app',
-    title: 'Focus Playlist - Spotify',
-    description: 'Ascolta nell’app Spotify.',
-    clicks: 450,
-    stats: {
-      iosClicks: 260,
-      androidClicks: 160,
-      desktopClicks: 30,
-      inAppBreaks: { instagram: 210, tiktok: 130, facebook: 60, whatsapp: 30, other: 20 },
-      appOpens: 390,
-      browserEscapes: 50,
-    },
-  },
-];
+// User-created links cache (No predefined sample links - only user-created links)
+const LINKS_CACHE: DeepLink[] = [];
 
 function detectPlatform(url: string): string {
   const clean = (url || '').toLowerCase();
@@ -713,14 +639,16 @@ export default async function handler(req: any, res: any) {
   if (rawUrl.includes('/api/links') && req.method === 'GET') {
     res.setHeader('Content-Type', 'application/json');
 
+    const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+
     // 1. Try PostgreSQL or Supabase
     if (sqlClient || supabase) {
       const supaLinks = await getSupabaseLinks();
-      if (supaLinks && supaLinks.length > 0) {
-        const map = new Map<string, DeepLink>();
-        LINKS_CACHE.forEach((l) => map.set(l.slug.toLowerCase(), l));
-        supaLinks.forEach((l) => map.set(l.slug.toLowerCase(), l));
-        return res.status(200).json(Array.from(map.values()));
+      if (supaLinks) {
+        const cleanSupaLinks = supaLinks.filter(
+          (l) => !SAMPLE_SLUGS.has((l.slug || '').toLowerCase())
+        );
+        return res.status(200).json(cleanSupaLinks);
       }
     }
 
@@ -730,20 +658,16 @@ export default async function handler(req: any, res: any) {
         const storedSlugs: string[] = (await kvGet('deepdirect:slugs_index')) || [];
         const kvLinks: DeepLink[] = [];
         for (const s of storedSlugs) {
+          if (SAMPLE_SLUGS.has(s.toLowerCase())) continue;
           const l = await kvGet(`deepdirect:slug:${s}`);
           if (l) kvLinks.push(l);
         }
-        if (kvLinks.length > 0) {
-          const map = new Map<string, DeepLink>();
-          LINKS_CACHE.forEach((l) => map.set(l.slug.toLowerCase(), l));
-          kvLinks.forEach((l) => map.set(l.slug.toLowerCase(), l));
-          return res.status(200).json(Array.from(map.values()));
-        }
+        return res.status(200).json(kvLinks);
       } catch (err) {
         console.warn('Failed reading KV:', err);
       }
     }
-    return res.status(200).json(LINKS_CACHE);
+    return res.status(200).json(LINKS_CACHE.filter((l) => !SAMPLE_SLUGS.has((l.slug || '').toLowerCase())));
   }
 
   // Handle API route: POST /api/links/sync (Bulk sync from localStorage to Supabase)
