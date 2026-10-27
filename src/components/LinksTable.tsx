@@ -50,11 +50,7 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   const effectiveBaseUrl = customBaseUrl || rawBaseUrl;
 
   const getShareableUrl = (link: DeepLink) => {
-    const builtInSlugs = ['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus'];
-    if (builtInSlugs.includes((link.slug || '').toLowerCase())) {
-      return `${effectiveBaseUrl}/l/${link.slug}`;
-    }
-    return `${effectiveBaseUrl}/l/${link.slug}?u=${encodeURIComponent(link.originalUrl || '')}`;
+    return `${effectiveBaseUrl}/l/${link.slug}`;
   };
 
   const handleCopy = (link: DeepLink) => {

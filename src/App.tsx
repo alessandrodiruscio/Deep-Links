@@ -66,12 +66,31 @@ export default function App() {
   const [qrModalData, setQrModalData] = useState<{ url: string; title: string } | null>(null);
   const [simulatedLink, setSimulatedLink] = useState<DeepLink | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dbStatus, setDbStatus] = useState<{
+    hasSupabase?: boolean;
+    tableReady?: boolean;
+    message?: string;
+  } | null>(null);
   const [customBaseUrl, setCustomBaseUrl] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('deepdirect_custom_domain') || '';
     }
     return '';
   });
+
+  const checkDbStatus = async () => {
+    try {
+      const res = await fetch('/api/database-status');
+      if (res.ok) {
+        const data = await res.json();
+        setDbStatus(data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    checkDbStatus();
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -90,14 +109,37 @@ export default function App() {
     }
   };
 
-  // Load links from backend API
+  // Load links from backend API and merge safely with localStorage
   const fetchLinks = async () => {
     try {
       const res = await fetch('/api/links');
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setLinks(data.map(normalizeLink));
+        const serverLinks = await res.json();
+        if (Array.isArray(serverLinks)) {
+          setLinks((prevLinks) => {
+            const builtInSlugs = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+
+            // Retain any custom user-created link already saved locally
+            const userCustomLinks = prevLinks.filter(
+              (l) => !builtInSlugs.has((l.slug || '').toLowerCase())
+            );
+
+            // Merge map: start with server links, then overlay user's custom links
+            const map = new Map<string, DeepLink>();
+            for (const item of serverLinks) {
+              const norm = normalizeLink(item);
+              map.set(norm.slug.toLowerCase(), norm);
+            }
+            for (const userLink of userCustomLinks) {
+              map.set(userLink.slug.toLowerCase(), userLink);
+            }
+
+            const merged = Array.from(map.values());
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('deepdirect_saved_links', JSON.stringify(merged));
+            }
+            return merged;
+          });
         }
       }
     } catch (err) {
@@ -226,11 +268,7 @@ export default function App() {
 
   const handleOpenQrModal = (link: DeepLink) => {
     const origin = customBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-    const builtInSlugs = ['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus'];
-    const isBuiltIn = builtInSlugs.includes((link.slug || '').toLowerCase());
-    const shareableUrl = isBuiltIn
-      ? `${origin}/l/${link.slug}`
-      : `${origin}/l/${link.slug}?u=${encodeURIComponent(link.originalUrl || '')}`;
+    const shareableUrl = `${origin}/l/${link.slug}`;
 
     setQrModalData({
       url: shareableUrl,
@@ -252,6 +290,35 @@ export default function App() {
 
       {/* Main Viewport Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Supabase Status Banner */}
+        {dbStatus?.hasSupabase && !dbStatus.tableReady && (
+          <div className="mb-6 p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
+              <span>
+                <strong>Supabase rilevato su Vercel!</strong> Manca solo un passaggio: esegui lo script SQL nel tuo SQL Editor di Supabase per attivare il salvataggio permanente.
+              </span>
+            </div>
+            <button
+              onClick={() => setCurrentTab('deploy')}
+              className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold rounded-lg border border-amber-500/40 transition-colors whitespace-nowrap self-start sm:self-auto"
+            >
+              Copia Script SQL →
+            </button>
+          </div>
+        )}
+
+        {dbStatus?.hasSupabase && dbStatus.tableReady && (
+          <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs text-emerald-300 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>
+                <strong>Database Supabase Connesso</strong>: Tutti i tuoi deep link e i conteggi dei click sono memorizzati in modo permanente nel cloud!
+              </span>
+            </div>
+          </div>
+        )}
+
         {currentTab === 'links' && (
           <LinksTable
             links={links}

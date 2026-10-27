@@ -1,4 +1,20 @@
-// Vercel Serverless Function - Native Handler (Zero dependencies, 100% stable)
+// Vercel Serverless Function - Native Handler with Supabase & KV Persistence
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase Auto-detection (Standard Vercel + Supabase integration environment variables)
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  '';
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  '';
+
+const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 interface DeepLink {
   id: string;
@@ -229,10 +245,183 @@ function computeProtocols(url: string, platform: string, mode: string) {
   };
 }
 
+// Cloud KV Persistence Helper (Vercel KV or Upstash Redis REST)
+const KV_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+
+async function kvGet(key: string): Promise<any> {
+  if (!KV_URL || !KV_TOKEN) return null;
+  try {
+    const res = await fetch(`${KV_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${KV_TOKEN}` },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.result) return null;
+    return typeof json.result === 'string' ? JSON.parse(json.result) : json.result;
+  } catch {
+    return null;
+  }
+}
+
+async function kvSet(key: string, value: any): Promise<boolean> {
+  if (!KV_URL || !KV_TOKEN) return false;
+  try {
+    await fetch(`${KV_URL}/set/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(typeof value === 'string' ? value : JSON.stringify(value)),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function kvDel(key: string): Promise<void> {
+  if (!KV_URL || !KV_TOKEN) return;
+  try {
+    await fetch(`${KV_URL}/del/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${KV_TOKEN}` },
+    });
+  } catch {}
+}
+
+// -------------------------------------------------------------
+// Supabase Database Helpers
+// -------------------------------------------------------------
+async function getSupabaseLinks(): Promise<DeepLink[] | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('deep_links')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Supabase get error:', error.message);
+      return null;
+    }
+    if (Array.isArray(data)) {
+      return data.map((row: any) => {
+        if (row.data && typeof row.data === 'object') {
+          return {
+            ...row.data,
+            clicks: typeof row.clicks === 'number' ? row.clicks : (row.data.clicks || 0),
+          };
+        }
+        return {
+          id: row.id || `link_${row.slug}`,
+          slug: row.slug,
+          originalUrl: row.original_url || row.originalUrl || '',
+          platform: row.platform || detectPlatform(row.original_url || ''),
+          targetMode: row.target_mode || row.targetMode || 'smart',
+          title: row.title || 'Deep Link',
+          description: row.description || '',
+          imageUrl: row.image_url || row.imageUrl || '',
+          clicks: Number(row.clicks || 0),
+          stats: row.stats || {
+            iosClicks: 0,
+            androidClicks: 0,
+            desktopClicks: 0,
+            inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+            appOpens: 0,
+            browserEscapes: 0,
+          },
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('Supabase query exception:', e);
+  }
+  return null;
+}
+
+async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('deep_links')
+      .select('*')
+      .eq('slug', slug.toLowerCase())
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    if (data.data && typeof data.data === 'object') {
+      return {
+        ...data.data,
+        clicks: typeof data.clicks === 'number' ? data.clicks : (data.data.clicks || 0),
+      };
+    }
+    return {
+      id: data.id || `link_${data.slug}`,
+      slug: data.slug,
+      originalUrl: data.original_url || data.originalUrl || '',
+      platform: data.platform || detectPlatform(data.original_url || ''),
+      targetMode: data.target_mode || data.targetMode || 'smart',
+      title: data.title || 'Reindirizzamento...',
+      description: data.description || '',
+      imageUrl: data.image_url || data.imageUrl || '',
+      clicks: Number(data.clicks || 0),
+      stats: data.stats || {
+        iosClicks: 0,
+        androidClicks: 0,
+        desktopClicks: 0,
+        inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+        appOpens: 0,
+        browserEscapes: 0,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('deep_links').upsert(
+      {
+        slug: link.slug.toLowerCase(),
+        id: link.id,
+        original_url: link.originalUrl,
+        platform: link.platform,
+        target_mode: link.targetMode,
+        title: link.title,
+        description: link.description || '',
+        image_url: link.imageUrl || '',
+        clicks: link.clicks || 0,
+        stats: link.stats,
+        data: link,
+      },
+      { onConflict: 'slug' }
+    );
+    if (error) {
+      console.warn('Supabase upsert error:', error.message);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('Supabase upsert exception:', e);
+    return false;
+  }
+}
+
+async function deleteSupabaseLink(idOrSlug: string): Promise<void> {
+  if (!supabase) return;
+  try {
+    await supabase.from('deep_links').delete().or(`id.eq.${idOrSlug},slug.eq.${idOrSlug.toLowerCase()}`);
+  } catch (e) {
+    console.warn('Supabase delete exception:', e);
+  }
+}
+
 export default async function handler(req: any, res: any) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
@@ -241,6 +430,46 @@ export default async function handler(req: any, res: any) {
 
   const rawUrl = req.url || '';
   const query = req.query || {};
+
+  // Handle API route: GET /api/database-status
+  if (rawUrl.includes('/api/database-status')) {
+    res.setHeader('Content-Type', 'application/json');
+    if (!supabase) {
+      return res.status(200).json({
+        hasSupabase: false,
+        hasKv: !!(KV_URL && KV_TOKEN),
+        tableReady: false,
+        message: 'Nessuna variabile SUPABASE_URL trovata nel deployment.',
+      });
+    }
+
+    try {
+      const { data, error } = await supabase.from('deep_links').select('slug').limit(1);
+      if (error) {
+        return res.status(200).json({
+          hasSupabase: true,
+          hasKv: !!(KV_URL && KV_TOKEN),
+          tableReady: false,
+          error: error.message,
+          code: error.code,
+          message: 'Supabase collegato! Serve eseguire lo script SQL per creare la tabella deep_links.',
+        });
+      }
+      return res.status(200).json({
+        hasSupabase: true,
+        hasKv: !!(KV_URL && KV_TOKEN),
+        tableReady: true,
+        message: 'Supabase è attivo e la tabella deep_links è pronta per il salvataggio permanente.',
+      });
+    } catch (err: any) {
+      return res.status(200).json({
+        hasSupabase: true,
+        hasKv: !!(KV_URL && KV_TOKEN),
+        tableReady: false,
+        error: err.message,
+      });
+    }
+  }
 
   // Extract slug
   let slug = (query.slug as string) || '';
@@ -252,6 +481,37 @@ export default async function handler(req: any, res: any) {
   // Handle API route: GET /api/links
   if (rawUrl.includes('/api/links') && req.method === 'GET') {
     res.setHeader('Content-Type', 'application/json');
+
+    // 1. Try Supabase
+    if (supabase) {
+      const supaLinks = await getSupabaseLinks();
+      if (supaLinks && supaLinks.length > 0) {
+        const map = new Map<string, DeepLink>();
+        LINKS_CACHE.forEach((l) => map.set(l.slug.toLowerCase(), l));
+        supaLinks.forEach((l) => map.set(l.slug.toLowerCase(), l));
+        return res.status(200).json(Array.from(map.values()));
+      }
+    }
+
+    // 2. Try KV
+    if (KV_URL && KV_TOKEN) {
+      try {
+        const storedSlugs: string[] = (await kvGet('deepdirect:slugs_index')) || [];
+        const kvLinks: DeepLink[] = [];
+        for (const s of storedSlugs) {
+          const l = await kvGet(`deepdirect:slug:${s}`);
+          if (l) kvLinks.push(l);
+        }
+        if (kvLinks.length > 0) {
+          const map = new Map<string, DeepLink>();
+          LINKS_CACHE.forEach((l) => map.set(l.slug.toLowerCase(), l));
+          kvLinks.forEach((l) => map.set(l.slug.toLowerCase(), l));
+          return res.status(200).json(Array.from(map.values()));
+        }
+      } catch (err) {
+        console.warn('Failed reading KV:', err);
+      }
+    }
     return res.status(200).json(LINKS_CACHE);
   }
 
@@ -287,15 +547,91 @@ export default async function handler(req: any, res: any) {
     };
 
     LINKS_CACHE.unshift(newLink);
+
+    // Save to Supabase
+    if (supabase) {
+      await saveSupabaseLink(newLink);
+    }
+
+    // Save to persistent KV if configured
+    if (KV_URL && KV_TOKEN) {
+      try {
+        await kvSet(`deepdirect:slug:${finalSlug.toLowerCase()}`, newLink);
+        await kvSet(`deepdirect:id:${newLink.id}`, newLink);
+        const storedSlugs: string[] = (await kvGet('deepdirect:slugs_index')) || [];
+        if (!storedSlugs.includes(finalSlug.toLowerCase())) {
+          storedSlugs.unshift(finalSlug.toLowerCase());
+          await kvSet('deepdirect:slugs_index', storedSlugs);
+        }
+      } catch (e) {
+        console.warn('Error saving to KV:', e);
+      }
+    }
+
     return res.status(201).json(newLink);
+  }
+
+  // Handle API route: DELETE /api/links/:id
+  if (rawUrl.includes('/api/links') && req.method === 'DELETE') {
+    res.setHeader('Content-Type', 'application/json');
+    const id = rawUrl.split('/api/links/')[1]?.split('?')[0];
+    if (id) {
+      // Remove from memory
+      const idx = LINKS_CACHE.findIndex((l) => l.id === id || l.slug === id);
+      if (idx !== -1) {
+        const removed = LINKS_CACHE.splice(idx, 1)[0];
+        if (KV_URL && KV_TOKEN && removed) {
+          await kvDel(`deepdirect:slug:${removed.slug.toLowerCase()}`);
+          await kvDel(`deepdirect:id:${removed.id}`);
+          const storedSlugs: string[] = (await kvGet('deepdirect:slugs_index')) || [];
+          await kvSet(
+            'deepdirect:slugs_index',
+            storedSlugs.filter((s) => s !== removed.slug.toLowerCase())
+          );
+        }
+      }
+
+      // Remove from Supabase
+      if (supabase) {
+        await deleteSupabaseLink(id);
+      }
+    }
+    return res.status(200).json({ success: true });
   }
 
   // If a slug is requested, render the Deep Link Gateway
   if (slug) {
-    // 1. Look in cache
-    let link = LINKS_CACHE.find((l) => l.slug.toLowerCase() === slug.toLowerCase());
+    // 1. Look in memory cache
+    let link: DeepLink | null | undefined = LINKS_CACHE.find(
+      (l) => l.slug.toLowerCase() === slug.toLowerCase()
+    );
 
-    // 2. Look in fallback query parameter ?u=... if passed
+    // 2. Look in Supabase database
+    if (!link && supabase) {
+      const supaLink = await getSupabaseLinkBySlug(slug);
+      if (supaLink) {
+        link = supaLink;
+        // Increment clicks asynchronously
+        try {
+          supabase
+            .from('deep_links')
+            .update({ clicks: (supaLink.clicks || 0) + 1 })
+            .eq('slug', slug.toLowerCase())
+            .then(() => {}, () => {});
+        } catch {}
+      }
+    }
+
+    // 3. Look in persistent KV storage if configured
+    if (!link && KV_URL && KV_TOKEN) {
+      try {
+        link = await kvGet(`deepdirect:slug:${slug.toLowerCase()}`);
+      } catch (err) {
+        console.warn('Error fetching slug from KV:', err);
+      }
+    }
+
+    // 4. Look in fallback query parameter ?u=... if passed
     if (!link && query.u) {
       const decodedOriginalUrl = decodeURIComponent(query.u as string);
       link = {

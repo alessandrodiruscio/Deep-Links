@@ -151,11 +151,116 @@ export const DeployGuide: React.FC<DeployGuideProps> = ({
         </p>
       </div>
 
-      {/* Step 3: Zero maintenance workflow */}
+      {/* Step 3: Supabase Database Setup */}
+      <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <Server className="w-5 h-5 text-emerald-400" />
+            <span>Passo 3: Database Supabase - Salva i Link per Sempre</span>
+          </div>
+          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+            Integrazione Supabase Attiva
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Hai collegato Supabase a Vercel: <strong>ottimo lavoro!</strong> Per fare in modo che Supabase
+          salvi i tuoi link e i conteggi dei click in modo permanente, serve solo creare la tabella{' '}
+          <code className="text-emerald-300 font-mono">deep_links</code> (operazione da fare una sola volta in 30 secondi):
+        </p>
+
+        <ol className="list-decimal list-inside text-xs text-slate-400 space-y-1.5 pl-1">
+          <li>
+            Apri la tua dashboard su <strong className="text-white">Supabase.com</strong> (oppure da Vercel → scheda <em>Storage</em> → <em>Supabase</em>).
+          </li>
+          <li>
+            Nel menu a sinistra clicca su <strong className="text-white">SQL Editor</strong> (l'icona del terminale <code>&gt;_</code>).
+          </li>
+          <li>
+            Clicca su <strong className="text-indigo-400">New query</strong>, incolla il codice qui sotto e premi <strong className="text-emerald-400">Run</strong>:
+          </li>
+        </ol>
+
+        {/* Copyable SQL Snippet */}
+        <div className="relative bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-x-auto text-xs font-mono text-emerald-400">
+          <button
+            type="button"
+            onClick={() =>
+              handleCopy(
+                `-- Crea la tabella per salvare i link in Supabase
+CREATE TABLE IF NOT EXISTS public.deep_links (
+  slug TEXT PRIMARY KEY,
+  id TEXT,
+  original_url TEXT NOT NULL,
+  platform TEXT DEFAULT 'generic',
+  target_mode TEXT DEFAULT 'smart',
+  title TEXT,
+  description TEXT,
+  image_url TEXT,
+  clicks BIGINT DEFAULT 0,
+  stats JSONB DEFAULT '{"iosClicks":0,"androidClicks":0,"desktopClicks":0,"inAppBreaks":{"instagram":0,"tiktok":0,"facebook":0,"whatsapp":0,"other":0},"appOpens":0,"browserEscapes":0}'::jsonb,
+  data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Abilita l'accesso in lettura e scrittura per l'app
+ALTER TABLE public.deep_links ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public access to deep_links" ON public.deep_links;
+CREATE POLICY "Public access to deep_links" ON public.deep_links FOR ALL USING (true) WITH CHECK (true);`,
+                'sql'
+              )
+            }
+            className="absolute top-3 right-3 flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-sans font-medium rounded-lg border border-slate-700 transition-colors"
+          >
+            {copiedField === 'sql' ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-400">Copiato!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copia Script SQL</span>
+              </>
+            )}
+          </button>
+
+          <pre className="text-[11px] text-slate-300 leading-relaxed pr-24">
+{`CREATE TABLE IF NOT EXISTS public.deep_links (
+  slug TEXT PRIMARY KEY,
+  id TEXT,
+  original_url TEXT NOT NULL,
+  platform TEXT DEFAULT 'generic',
+  target_mode TEXT DEFAULT 'smart',
+  title TEXT,
+  description TEXT,
+  image_url TEXT,
+  clicks BIGINT DEFAULT 0,
+  stats JSONB DEFAULT '{"iosClicks":0,"androidClicks":0,"desktopClicks":0}'::jsonb,
+  data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.deep_links ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public access to deep_links" ON public.deep_links FOR ALL USING (true) WITH CHECK (true);`}
+          </pre>
+        </div>
+
+        <p className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>
+            Una volta premuto <strong>Run</strong>, il database è configurato: ogni link creato resterà salvato su Supabase per sempre!
+          </span>
+        </p>
+      </div>
+
+      {/* Step 4: Zero maintenance workflow */}
       <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
         <div className="flex items-center gap-2 text-white font-bold text-sm">
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
-          <span>Passo 3: Come Funziona il Flusso Quotidiano (Zero Manutenzione)</span>
+          <span>Passo 4: Flusso Quotidiano (Zero Manutenzione)</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">

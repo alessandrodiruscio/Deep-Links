@@ -2,9 +2,24 @@ import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createClient } from '@supabase/supabase-js';
 import { applyUtm, detectPlatform, generateProtocols, slugify } from './src/lib/deepLinkEngine';
 import { INITIAL_SAMPLE_LINKS } from './src/lib/sampleLinks';
 import { DeepLink } from './src/types/deepLink';
+
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  '';
+const SUPABASE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  '';
+
+const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,8 +70,58 @@ async function startServer() {
   // API Endpoints
   // -------------------------------------------------------------
 
+  // Database status check
+  app.get('/api/database-status', async (req: Request, res: Response) => {
+    if (!supabase) {
+      return res.json({
+        hasSupabase: false,
+        tableReady: false,
+        message: 'Nessuna variabile SUPABASE_URL trovata nell\'ambiente.',
+      });
+    }
+
+    try {
+      const { data, error } = await supabase.from('deep_links').select('slug').limit(1);
+      if (error) {
+        return res.json({
+          hasSupabase: true,
+          tableReady: false,
+          error: error.message,
+          code: error.code,
+          message: 'Supabase collegato! Serve eseguire lo script SQL per creare la tabella deep_links.',
+        });
+      }
+      return res.json({
+        hasSupabase: true,
+        tableReady: true,
+        message: 'Supabase è attivo e la tabella deep_links è pronta per il salvataggio permanente.',
+      });
+    } catch (err: any) {
+      return res.json({
+        hasSupabase: true,
+        tableReady: false,
+        error: err.message,
+      });
+    }
+  });
+
   // List all deep links
-  app.get('/api/links', (req: Request, res: Response) => {
+  app.get('/api/links', async (req: Request, res: Response) => {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('deep_links').select('*');
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const map = new Map<string, DeepLink>();
+          linksCache.forEach((l) => map.set(l.slug.toLowerCase(), l));
+          data.forEach((row: any) => {
+            if (row.data) {
+              map.set(row.slug.toLowerCase(), row.data);
+            }
+          });
+          return res.json(Array.from(map.values()));
+        }
+      } catch {}
+    }
     res.json(linksCache);
   });
 
@@ -122,6 +187,32 @@ async function startServer() {
 
     linksCache.unshift(newLink);
     saveLinks(linksCache);
+
+    if (supabase) {
+      supabase
+        .from('deep_links')
+        .upsert(
+          {
+            slug: newLink.slug.toLowerCase(),
+            id: newLink.id,
+            original_url: newLink.originalUrl,
+            platform: newLink.platform,
+            target_mode: newLink.targetMode,
+            title: newLink.title,
+            description: newLink.description,
+            image_url: newLink.imageUrl || '',
+            clicks: 0,
+            stats: newLink.stats,
+            data: newLink,
+          },
+          { onConflict: 'slug' }
+        )
+        .then(
+          () => {},
+          (err) => console.warn('Supabase dev upsert failed:', err)
+        );
+    }
+
     res.status(201).json(newLink);
   });
 
@@ -167,8 +258,21 @@ async function startServer() {
   // Delete deep link
   app.delete('/api/links/:id', (req: Request, res: Response) => {
     const { id } = req.params;
+    const toDelete = linksCache.find((l) => l.id === id || l.slug === id);
     linksCache = linksCache.filter((l) => l.id !== id);
     saveLinks(linksCache);
+
+    if (supabase && toDelete) {
+      supabase
+        .from('deep_links')
+        .delete()
+        .or(`id.eq.${id},slug.eq.${toDelete.slug.toLowerCase()}`)
+        .then(
+          () => {},
+          () => {}
+        );
+    }
+
     res.json({ success: true });
   });
 
