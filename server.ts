@@ -135,6 +135,67 @@ async function startServer() {
     res.json(link);
   });
 
+  // Bulk sync from localStorage to database
+  app.post('/api/links/sync', async (req: Request, res: Response) => {
+    const linksToSync = Array.isArray(req.body) ? req.body : (req.body?.links || []);
+    const syncedSlugs: string[] = [];
+
+    for (const item of linksToSync) {
+      if (!item.slug || !item.originalUrl) continue;
+      const cleanSlug = item.slug.trim();
+      const norm: DeepLink = {
+        id: item.id || `link_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        slug: cleanSlug,
+        originalUrl: item.originalUrl.trim(),
+        platform: item.platform || detectPlatform(item.originalUrl),
+        targetMode: item.targetMode || 'smart',
+        title: item.title || 'Deep Link',
+        description: item.description || '',
+        imageUrl: item.imageUrl || '',
+        createdAt: item.createdAt || new Date().toISOString(),
+        updatedAt: item.updatedAt || new Date().toISOString(),
+        clicks: Number(item.clicks || 0),
+        stats: item.stats || {
+          iosClicks: 0,
+          androidClicks: 0,
+          desktopClicks: 0,
+          inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+          appOpens: 0,
+          browserEscapes: 0,
+        },
+      };
+
+      const idx = linksCache.findIndex((l) => l.slug.toLowerCase() === cleanSlug.toLowerCase());
+      if (idx !== -1) {
+        linksCache[idx] = { ...linksCache[idx], ...norm };
+      } else {
+        linksCache.unshift(norm);
+      }
+
+      if (supabase) {
+        await supabase.from('deep_links').upsert(
+          {
+            slug: norm.slug.toLowerCase(),
+            id: norm.id,
+            original_url: norm.originalUrl,
+            platform: norm.platform,
+            target_mode: norm.targetMode,
+            title: norm.title,
+            description: norm.description,
+            image_url: norm.imageUrl || '',
+            clicks: norm.clicks,
+            stats: norm.stats,
+            data: norm,
+          },
+          { onConflict: 'slug' }
+        );
+      }
+      syncedSlugs.push(cleanSlug);
+    }
+    saveLinks(linksCache);
+    res.json({ success: true, count: syncedSlugs.length, slugs: syncedSlugs });
+  });
+
   // Create deep link
   app.post('/api/links', (req: Request, res: Response) => {
     const { originalUrl, slug: customSlug, targetMode, title, description, imageUrl, utm } = req.body;

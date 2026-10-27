@@ -344,7 +344,7 @@ async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
     const { data, error } = await supabase
       .from('deep_links')
       .select('*')
-      .eq('slug', slug.toLowerCase())
+      .ilike('slug', slug.trim())
       .maybeSingle();
 
     if (error || !data) return null;
@@ -513,6 +513,63 @@ export default async function handler(req: any, res: any) {
       }
     }
     return res.status(200).json(LINKS_CACHE);
+  }
+
+  // Handle API route: POST /api/links/sync (Bulk sync from localStorage to Supabase)
+  if (rawUrl.includes('/api/links/sync') && req.method === 'POST') {
+    res.setHeader('Content-Type', 'application/json');
+    const body = req.body || {};
+    const linksToSync = Array.isArray(body) ? body : (body.links || []);
+    const syncedSlugs: string[] = [];
+
+    for (const item of linksToSync) {
+      if (!item.slug || !item.originalUrl) continue;
+      const cleanSlug = item.slug.trim();
+      const norm: DeepLink = {
+        id: item.id || `link_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        slug: cleanSlug,
+        originalUrl: item.originalUrl.trim(),
+        platform: item.platform || detectPlatform(item.originalUrl),
+        targetMode: item.targetMode || 'smart',
+        title: item.title || 'Deep Link',
+        description: item.description || '',
+        imageUrl: item.imageUrl || '',
+        clicks: Number(item.clicks || 0),
+        stats: item.stats || {
+          iosClicks: 0,
+          androidClicks: 0,
+          desktopClicks: 0,
+          inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+          appOpens: 0,
+          browserEscapes: 0,
+        },
+      };
+
+      // Add to memory cache
+      const idx = LINKS_CACHE.findIndex((l) => l.slug.toLowerCase() === cleanSlug.toLowerCase());
+      if (idx !== -1) {
+        LINKS_CACHE[idx] = { ...LINKS_CACHE[idx], ...norm };
+      } else {
+        LINKS_CACHE.unshift(norm);
+      }
+
+      // Save to Supabase
+      if (supabase) {
+        await saveSupabaseLink(norm);
+      }
+
+      // Save to KV if configured
+      if (KV_URL && KV_TOKEN) {
+        try {
+          await kvSet(`deepdirect:slug:${cleanSlug.toLowerCase()}`, norm);
+          await kvSet(`deepdirect:id:${norm.id}`, norm);
+        } catch {}
+      }
+
+      syncedSlugs.push(cleanSlug);
+    }
+
+    return res.status(200).json({ success: true, count: syncedSlugs.length, slugs: syncedSlugs });
   }
 
   // Handle API route: POST /api/links

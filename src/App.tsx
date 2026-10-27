@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { CloudUpload, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Header } from './components/Header';
 import { LinksTable } from './components/LinksTable';
 import { DeviceSimulator } from './components/DeviceSimulator';
@@ -109,7 +110,32 @@ export default function App() {
     }
   };
 
-  // Load links from backend API and merge safely with localStorage
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const syncLinksToDatabase = async (linksToSync: DeepLink[]) => {
+    if (!linksToSync || linksToSync.length === 0) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/links/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(linksToSync),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const count = data.count || linksToSync.length;
+        setSyncMessage(`✅ ${count} link sincronizzati con successo nel Database Supabase! Ora sono attivi ovunque.`);
+        setTimeout(() => setSyncMessage(null), 5000);
+      }
+    } catch (err) {
+      console.warn('Sync exception:', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Load links from backend API, merge with localStorage and auto-sync missing links
   const fetchLinks = async () => {
     try {
       const res = await fetch('/api/links');
@@ -123,6 +149,19 @@ export default function App() {
             const userCustomLinks = prevLinks.filter(
               (l) => !builtInSlugs.has((l.slug || '').toLowerCase())
             );
+
+            // Find user links that exist locally in browser but not on server yet
+            const serverSlugSet = new Set(
+              serverLinks.map((s: any) => (s.slug || '').toLowerCase())
+            );
+            const missingOnServer = userCustomLinks.filter(
+              (ul) => !serverSlugSet.has((ul.slug || '').toLowerCase())
+            );
+
+            // Auto-sync them up to the server/database immediately!
+            if (missingOnServer.length > 0) {
+              syncLinksToDatabase(missingOnServer);
+            }
 
             // Merge map: start with server links, then overlay user's custom links
             const map = new Map<string, DeepLink>();
@@ -308,14 +347,31 @@ export default function App() {
           </div>
         )}
 
-        {dbStatus?.hasSupabase && dbStatus.tableReady && (
-          <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs text-emerald-300 shadow-sm">
+        {syncMessage && (
+          <div className="mb-6 px-4 py-3 bg-indigo-950/60 border border-indigo-500/40 rounded-xl flex items-center justify-between text-xs text-indigo-200 shadow-md">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{syncMessage}</span>
+            </div>
+          </div>
+        )}
+
+        {dbStatus?.hasSupabase && dbStatus.tableReady && (
+          <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
               <span>
-                <strong>Database Supabase Connesso</strong>: Tutti i tuoi deep link e i conteggi dei click sono memorizzati in modo permanente nel cloud!
+                <strong>Database Supabase Connesso</strong>: I tuoi link e le statistiche sono memorizzati in modo permanente nel cloud!
               </span>
             </div>
+            <button
+              onClick={() => syncLinksToDatabase(links)}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold rounded-lg border border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza Link nel Database'}</span>
+            </button>
           </div>
         )}
 
