@@ -1,15 +1,43 @@
-// Vercel Serverless Function - Native Handler with Supabase & KV Persistence
+// Vercel Serverless Function - Native Handler with Direct PostgreSQL & Supabase Persistence
 import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 
-// Supabase Auto-detection (Standard Vercel + Supabase integration environment variables)
+// 1. Direct PostgreSQL Auto-Detection (Injected automatically by Vercel Marketplace Supabase)
+const POSTGRES_URL =
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.POSTGRES_URL ||
+  process.env.DATABASE_URL ||
+  process.env.SUPABASE_DB_URL ||
+  '';
+
+let sqlClient: ReturnType<typeof postgres> | null = null;
+if (POSTGRES_URL) {
+  try {
+    sqlClient = postgres(POSTGRES_URL, {
+      ssl: 'require',
+      max: 3,
+      idle_timeout: 20,
+      connect_timeout: 5,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize postgres client:', err);
+  }
+}
+
+// 2. Supabase REST SDK Auto-detection (Standard Vercel + Supabase environment variables)
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
+  process.env.SUPABASE_REST_URL ||
   '';
 const SUPABASE_KEY =
+  process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   '';
@@ -293,37 +321,163 @@ async function kvDel(key: string): Promise<void> {
 // -------------------------------------------------------------
 // Supabase Database Helpers
 // -------------------------------------------------------------
-async function getSupabaseLinks(): Promise<DeepLink[] | null> {
-  if (!supabase) return null;
+let tableEnsured = false;
+async function ensureTableExists(): Promise<boolean> {
+  if (tableEnsured) return true;
+  if (!sqlClient) return false;
   try {
-    const { data, error } = await supabase
-      .from('deep_links')
-      .select('*')
-      .order('created_at', { ascending: false });
+    await sqlClient`
+      CREATE TABLE IF NOT EXISTS public.deep_links (
+        slug TEXT PRIMARY KEY,
+        id TEXT,
+        original_url TEXT NOT NULL,
+        platform TEXT DEFAULT 'generic',
+        target_mode TEXT DEFAULT 'smart',
+        title TEXT,
+        folder TEXT,
+        description TEXT,
+        image_url TEXT,
+        clicks BIGINT DEFAULT 0,
+        stats JSONB DEFAULT '{"iosClicks":0,"androidClicks":0,"desktopClicks":0,"inAppBreaks":{"instagram":0,"tiktok":0,"facebook":0,"whatsapp":0,"other":0},"appOpens":0,"browserEscapes":0}'::jsonb,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `;
+    try {
+      await sqlClient`ALTER TABLE public.deep_links ENABLE ROW LEVEL SECURITY;`;
+      await sqlClient`DROP POLICY IF EXISTS "Public access to deep_links" ON public.deep_links;`;
+      await sqlClient`CREATE POLICY "Public access to deep_links" ON public.deep_links FOR ALL USING (true) WITH CHECK (true);`;
+    } catch {}
+    tableEnsured = true;
+    return true;
+  } catch (err) {
+    console.warn('Auto table creation failed:', err);
+    return false;
+  }
+}
 
-    if (error) {
-      console.warn('Supabase get error:', error.message);
-      return null;
-    }
-    if (Array.isArray(data)) {
-      return data.map((row: any) => {
-        if (row.data && typeof row.data === 'object') {
+async function getSupabaseLinks(): Promise<DeepLink[] | null> {
+  // 1. Try Direct PostgreSQL
+  if (sqlClient) {
+    try {
+      await ensureTableExists();
+      const rows = await sqlClient`SELECT * FROM public.deep_links ORDER BY created_at DESC LIMIT 200;`;
+      if (rows && rows.length > 0) {
+        return rows.map((row: any) => {
+          if (row.data && typeof row.data === 'object') {
+            return {
+              ...row.data,
+              clicks: typeof row.clicks === 'number' ? row.clicks : Number(row.clicks || 0),
+            };
+          }
           return {
-            ...row.data,
-            clicks: typeof row.clicks === 'number' ? row.clicks : (row.data.clicks || 0),
+            id: row.id || `link_${row.slug}`,
+            slug: row.slug,
+            originalUrl: row.original_url || row.originalUrl || '',
+            platform: row.platform || detectPlatform(row.original_url || ''),
+            targetMode: row.target_mode || row.targetMode || 'smart',
+            title: row.title || 'Deep Link',
+            folder: row.folder || '',
+            project: row.folder || '',
+            description: row.description || '',
+            imageUrl: row.image_url || row.imageUrl || '',
+            clicks: Number(row.clicks || 0),
+            stats: row.stats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Postgres getSupabaseLinks exception:', e);
+    }
+  }
+
+  // 2. Try Supabase REST SDK
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('deep_links')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data.map((row: any) => {
+          if (row.data && typeof row.data === 'object') {
+            return {
+              ...row.data,
+              clicks: typeof row.clicks === 'number' ? row.clicks : (row.data.clicks || 0),
+            };
+          }
+          return {
+            id: row.id || `link_${row.slug}`,
+            slug: row.slug,
+            originalUrl: row.original_url || row.originalUrl || '',
+            platform: row.platform || detectPlatform(row.original_url || ''),
+            targetMode: row.target_mode || row.targetMode || 'smart',
+            title: row.title || 'Deep Link',
+            folder: row.folder || '',
+            project: row.folder || '',
+            description: row.description || '',
+            imageUrl: row.image_url || row.imageUrl || '',
+            clicks: Number(row.clicks || 0),
+            stats: row.stats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+        });
+      }
+    } catch (e) {
+      console.warn('Supabase query exception:', e);
+    }
+  }
+  return null;
+}
+
+async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
+  const cleanSlug = slug.trim().toLowerCase();
+
+  // 1. Try Direct PostgreSQL
+  if (sqlClient) {
+    try {
+      await ensureTableExists();
+      const rows = await sqlClient`
+        SELECT * FROM public.deep_links 
+        WHERE LOWER(slug) = ${cleanSlug} 
+        LIMIT 1;
+      `;
+      if (rows && rows.length > 0) {
+        const data = rows[0];
+        if (data.data && typeof data.data === 'object') {
+          return {
+            ...data.data,
+            clicks: typeof data.clicks === 'number' ? data.clicks : Number(data.clicks || 0),
           };
         }
         return {
-          id: row.id || `link_${row.slug}`,
-          slug: row.slug,
-          originalUrl: row.original_url || row.originalUrl || '',
-          platform: row.platform || detectPlatform(row.original_url || ''),
-          targetMode: row.target_mode || row.targetMode || 'smart',
-          title: row.title || 'Deep Link',
-          description: row.description || '',
-          imageUrl: row.image_url || row.imageUrl || '',
-          clicks: Number(row.clicks || 0),
-          stats: row.stats || {
+          id: data.id || `link_${data.slug}`,
+          slug: data.slug,
+          originalUrl: data.original_url || data.originalUrl || '',
+          platform: data.platform || detectPlatform(data.original_url || ''),
+          targetMode: data.target_mode || data.targetMode || 'smart',
+          title: data.title || 'Reindirizzamento...',
+          folder: data.folder || '',
+          project: data.folder || '',
+          description: data.description || '',
+          imageUrl: data.image_url || data.imageUrl || '',
+          clicks: Number(data.clicks || 0),
+          stats: data.stats || {
             iosClicks: 0,
             androidClicks: 0,
             desktopClicks: 0,
@@ -332,91 +486,144 @@ async function getSupabaseLinks(): Promise<DeepLink[] | null> {
             browserEscapes: 0,
           },
         };
-      });
+      }
+    } catch (err) {
+      console.warn('Direct postgres lookup error:', err);
     }
-  } catch (e) {
-    console.warn('Supabase query exception:', e);
   }
+
+  // 2. Try Supabase REST SDK
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('deep_links')
+        .select('*')
+        .ilike('slug', cleanSlug)
+        .maybeSingle();
+
+      if (!error && data) {
+        if (data.data && typeof data.data === 'object') {
+          return {
+            ...data.data,
+            clicks: typeof data.clicks === 'number' ? data.clicks : (data.data.clicks || 0),
+          };
+        }
+        return {
+          id: data.id || `link_${data.slug}`,
+          slug: data.slug,
+          originalUrl: data.original_url || data.originalUrl || '',
+          platform: data.platform || detectPlatform(data.original_url || ''),
+          targetMode: data.target_mode || data.targetMode || 'smart',
+          title: data.title || 'Reindirizzamento...',
+          folder: data.folder || '',
+          project: data.folder || '',
+          description: data.description || '',
+          imageUrl: data.image_url || data.imageUrl || '',
+          clicks: Number(data.clicks || 0),
+          stats: data.stats || {
+            iosClicks: 0,
+            androidClicks: 0,
+            desktopClicks: 0,
+            inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+            appOpens: 0,
+            browserEscapes: 0,
+          },
+        };
+      }
+    } catch (e) {
+      console.warn('Supabase REST query exception:', e);
+    }
+  }
+
   return null;
 }
 
-async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
-  if (!supabase) return null;
-  try {
-    const { data, error } = await supabase
-      .from('deep_links')
-      .select('*')
-      .ilike('slug', slug.trim())
-      .maybeSingle();
-
-    if (error || !data) return null;
-
-    if (data.data && typeof data.data === 'object') {
-      return {
-        ...data.data,
-        clicks: typeof data.clicks === 'number' ? data.clicks : (data.data.clicks || 0),
-      };
-    }
-    return {
-      id: data.id || `link_${data.slug}`,
-      slug: data.slug,
-      originalUrl: data.original_url || data.originalUrl || '',
-      platform: data.platform || detectPlatform(data.original_url || ''),
-      targetMode: data.target_mode || data.targetMode || 'smart',
-      title: data.title || 'Reindirizzamento...',
-      description: data.description || '',
-      imageUrl: data.image_url || data.imageUrl || '',
-      clicks: Number(data.clicks || 0),
-      stats: data.stats || {
-        iosClicks: 0,
-        androidClicks: 0,
-        desktopClicks: 0,
-        inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
-        appOpens: 0,
-        browserEscapes: 0,
-      },
-    };
-  } catch {
-    return null;
-  }
-}
-
 async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
-  if (!supabase) return false;
-  try {
-    const { error } = await supabase.from('deep_links').upsert(
-      {
-        slug: link.slug.toLowerCase(),
-        id: link.id,
-        original_url: link.originalUrl,
-        platform: link.platform,
-        target_mode: link.targetMode,
-        title: link.title,
-        description: link.description || '',
-        image_url: link.imageUrl || '',
-        clicks: link.clicks || 0,
-        stats: link.stats,
-        data: link,
-      },
-      { onConflict: 'slug' }
-    );
-    if (error) {
-      console.warn('Supabase upsert error:', error.message);
-      return false;
+  let saved = false;
+
+  // 1. Save via Direct PostgreSQL (auto-creates table if needed)
+  if (sqlClient) {
+    try {
+      await ensureTableExists();
+      await sqlClient`
+        INSERT INTO public.deep_links (
+          slug, id, original_url, platform, target_mode, title, folder, description, image_url, clicks, stats, data, updated_at
+        ) VALUES (
+          ${link.slug.toLowerCase()},
+          ${link.id},
+          ${link.originalUrl},
+          ${link.platform},
+          ${link.targetMode},
+          ${link.title},
+          ${link.folder || link.project || ''},
+          ${link.description || ''},
+          ${link.imageUrl || ''},
+          ${link.clicks || 0},
+          ${JSON.stringify(link.stats)},
+          ${JSON.stringify(link)},
+          NOW()
+        )
+        ON CONFLICT (slug) DO UPDATE SET
+          original_url = EXCLUDED.original_url,
+          platform = EXCLUDED.platform,
+          target_mode = EXCLUDED.target_mode,
+          title = EXCLUDED.title,
+          folder = EXCLUDED.folder,
+          description = EXCLUDED.description,
+          image_url = EXCLUDED.image_url,
+          data = EXCLUDED.data,
+          updated_at = NOW();
+      `;
+      saved = true;
+    } catch (err) {
+      console.warn('Direct postgres upsert failed:', err);
     }
-    return true;
-  } catch (e) {
-    console.warn('Supabase upsert exception:', e);
-    return false;
   }
+
+  // 2. Save via Supabase REST SDK
+  if (supabase) {
+    try {
+      const { error } = await supabase.from('deep_links').upsert(
+        {
+          slug: link.slug.toLowerCase(),
+          id: link.id,
+          original_url: link.originalUrl,
+          platform: link.platform,
+          target_mode: link.targetMode,
+          title: link.title,
+          folder: link.folder || link.project || '',
+          description: link.description || '',
+          image_url: link.imageUrl || '',
+          clicks: link.clicks || 0,
+          stats: link.stats,
+          data: link,
+        },
+        { onConflict: 'slug' }
+      );
+      if (!error) {
+        saved = true;
+      } else {
+        console.warn('Supabase REST upsert error:', error.message);
+      }
+    } catch (e) {
+      console.warn('Supabase REST upsert exception:', e);
+    }
+  }
+
+  return saved;
 }
 
 async function deleteSupabaseLink(idOrSlug: string): Promise<void> {
-  if (!supabase) return;
-  try {
-    await supabase.from('deep_links').delete().or(`id.eq.${idOrSlug},slug.eq.${idOrSlug.toLowerCase()}`);
-  } catch (e) {
-    console.warn('Supabase delete exception:', e);
+  const clean = idOrSlug.trim().toLowerCase();
+  if (sqlClient) {
+    try {
+      await sqlClient`DELETE FROM public.deep_links WHERE LOWER(slug) = ${clean} OR id = ${idOrSlug};`;
+    } catch {}
+  }
+  if (supabase) {
+    try {
+      await supabase.from('deep_links').delete().or(`id.eq.${idOrSlug},slug.eq.${clean}`);
+    } catch {}
   }
 }
 
@@ -436,29 +643,50 @@ export default async function handler(req: any, res: any) {
   // Handle API route: GET /api/database-status
   if (rawUrl.includes('/api/database-status')) {
     res.setHeader('Content-Type', 'application/json');
-    if (!supabase) {
+    if (!sqlClient && !supabase) {
       return res.status(200).json({
         hasSupabase: false,
+        hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
         tableReady: false,
-        message: 'Nessuna variabile SUPABASE_URL trovata nel deployment.',
+        message: 'Nessuna variabile POSTGRES_URL o SUPABASE_URL trovata nel deployment.',
       });
     }
 
+    // Direct PostgreSQL auto-provisioning
+    if (sqlClient) {
+      try {
+        const tableReady = await ensureTableExists();
+        return res.status(200).json({
+          hasSupabase: true,
+          hasPostgres: true,
+          hasKv: !!(KV_URL && KV_TOKEN),
+          tableReady,
+          message: tableReady
+            ? 'Database Supabase/PostgreSQL connesso e tabella deep_links attiva! I link sono salvati in modo permanente.'
+            : 'Connessione al database stabilita. Configurazione tabella in corso...',
+        });
+      } catch (err: any) {
+        console.warn('Database status check postgres error:', err);
+      }
+    }
+
     try {
-      const { data, error } = await supabase.from('deep_links').select('slug').limit(1);
+      const { data, error } = await supabase!.from('deep_links').select('slug').limit(1);
       if (error) {
         return res.status(200).json({
           hasSupabase: true,
+          hasPostgres: false,
           hasKv: !!(KV_URL && KV_TOKEN),
           tableReady: false,
           error: error.message,
           code: error.code,
-          message: 'Supabase collegato! Serve eseguire lo script SQL per creare la tabella deep_links.',
+          message: 'Supabase REST collegato! Serve eseguire lo script SQL per creare la tabella deep_links.',
         });
       }
       return res.status(200).json({
         hasSupabase: true,
+        hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
         tableReady: true,
         message: 'Supabase è attivo e la tabella deep_links è pronta per il salvataggio permanente.',
@@ -466,6 +694,7 @@ export default async function handler(req: any, res: any) {
     } catch (err: any) {
       return res.status(200).json({
         hasSupabase: true,
+        hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
         tableReady: false,
         error: err.message,
@@ -484,8 +713,8 @@ export default async function handler(req: any, res: any) {
   if (rawUrl.includes('/api/links') && req.method === 'GET') {
     res.setHeader('Content-Type', 'application/json');
 
-    // 1. Try Supabase
-    if (supabase) {
+    // 1. Try PostgreSQL or Supabase
+    if (sqlClient || supabase) {
       const supaLinks = await getSupabaseLinks();
       if (supaLinks && supaLinks.length > 0) {
         const map = new Map<string, DeepLink>();
@@ -555,8 +784,8 @@ export default async function handler(req: any, res: any) {
         LINKS_CACHE.unshift(norm);
       }
 
-      // Save to Supabase
-      if (supabase) {
+      // Save to Supabase / PostgreSQL
+      if (sqlClient || supabase) {
         await saveSupabaseLink(norm);
       }
 
@@ -609,8 +838,8 @@ export default async function handler(req: any, res: any) {
 
     LINKS_CACHE.unshift(newLink);
 
-    // Save to Supabase
-    if (supabase) {
+    // Save to Supabase / PostgreSQL
+    if (sqlClient || supabase) {
       await saveSupabaseLink(newLink);
     }
 
@@ -652,8 +881,8 @@ export default async function handler(req: any, res: any) {
         }
       }
 
-      // Remove from Supabase
-      if (supabase) {
+      // Remove from Supabase / PostgreSQL
+      if (sqlClient || supabase) {
         await deleteSupabaseLink(id);
       }
     }
@@ -667,19 +896,25 @@ export default async function handler(req: any, res: any) {
       (l) => l.slug.toLowerCase() === slug.toLowerCase()
     );
 
-    // 2. Look in Supabase database
-    if (!link && supabase) {
+    // 2. Look in Supabase / PostgreSQL database
+    if (!link && (sqlClient || supabase)) {
       const supaLink = await getSupabaseLinkBySlug(slug);
       if (supaLink) {
         link = supaLink;
         // Increment clicks asynchronously
-        try {
-          supabase
-            .from('deep_links')
-            .update({ clicks: (supaLink.clicks || 0) + 1 })
-            .eq('slug', slug.toLowerCase())
-            .then(() => {}, () => {});
-        } catch {}
+        if (sqlClient) {
+          try {
+            sqlClient`UPDATE public.deep_links SET clicks = clicks + 1, updated_at = NOW() WHERE LOWER(slug) = ${slug.toLowerCase()};`.then(() => {}, () => {});
+          } catch {}
+        } else if (supabase) {
+          try {
+            supabase
+              .from('deep_links')
+              .update({ clicks: (supaLink.clicks || 0) + 1 })
+              .eq('slug', slug.toLowerCase())
+              .then(() => {}, () => {});
+          } catch {}
+        }
       }
     }
 

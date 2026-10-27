@@ -3,23 +3,88 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
+import postgres from 'postgres';
 import { applyUtm, detectPlatform, generateProtocols, slugify } from './src/lib/deepLinkEngine';
 import { INITIAL_SAMPLE_LINKS } from './src/lib/sampleLinks';
 import { DeepLink } from './src/types/deepLink';
 
+// 1. Direct PostgreSQL Auto-Detection (Injected by Vercel Marketplace Supabase)
+const POSTGRES_URL =
+  process.env.POSTGRES_URL_NON_POOLING ||
+  process.env.POSTGRES_URL ||
+  process.env.DATABASE_URL ||
+  process.env.SUPABASE_DB_URL ||
+  '';
+
+let sqlClient: ReturnType<typeof postgres> | null = null;
+if (POSTGRES_URL) {
+  try {
+    sqlClient = postgres(POSTGRES_URL, {
+      ssl: 'require',
+      max: 3,
+      idle_timeout: 20,
+      connect_timeout: 5,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize postgres client in server.ts:', err);
+  }
+}
+
+// 2. Supabase REST SDK Auto-detection
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
+  process.env.SUPABASE_REST_URL ||
   '';
 const SUPABASE_KEY =
+  process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_ANON_KEY ||
   '';
 
 const supabase = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+let tableEnsured = false;
+async function ensureTableExists(): Promise<boolean> {
+  if (tableEnsured) return true;
+  if (!sqlClient) return false;
+  try {
+    await sqlClient`
+      CREATE TABLE IF NOT EXISTS public.deep_links (
+        slug TEXT PRIMARY KEY,
+        id TEXT,
+        original_url TEXT NOT NULL,
+        platform TEXT DEFAULT 'generic',
+        target_mode TEXT DEFAULT 'smart',
+        title TEXT,
+        folder TEXT,
+        description TEXT,
+        image_url TEXT,
+        clicks BIGINT DEFAULT 0,
+        stats JSONB DEFAULT '{"iosClicks":0,"androidClicks":0,"desktopClicks":0,"inAppBreaks":{"instagram":0,"tiktok":0,"facebook":0,"whatsapp":0,"other":0},"appOpens":0,"browserEscapes":0}'::jsonb,
+        data JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `;
+    try {
+      await sqlClient`ALTER TABLE public.deep_links ENABLE ROW LEVEL SECURITY;`;
+      await sqlClient`DROP POLICY IF EXISTS "Public access to deep_links" ON public.deep_links;`;
+      await sqlClient`CREATE POLICY "Public access to deep_links" ON public.deep_links FOR ALL USING (true) WITH CHECK (true);`;
+    } catch {}
+    tableEnsured = true;
+    return true;
+  } catch (err) {
+    console.warn('Auto table creation failed:', err);
+    return false;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -72,19 +137,37 @@ async function startServer() {
 
   // Database status check
   app.get('/api/database-status', async (req: Request, res: Response) => {
-    if (!supabase) {
+    if (!sqlClient && !supabase) {
       return res.json({
         hasSupabase: false,
+        hasPostgres: false,
         tableReady: false,
-        message: 'Nessuna variabile SUPABASE_URL trovata nell\'ambiente.',
+        message: 'Nessuna variabile POSTGRES_URL o SUPABASE_URL trovata nell\'ambiente.',
       });
     }
 
+    if (sqlClient) {
+      try {
+        const tableReady = await ensureTableExists();
+        return res.json({
+          hasSupabase: true,
+          hasPostgres: true,
+          tableReady,
+          message: tableReady
+            ? 'Database Supabase/PostgreSQL connesso e tabella deep_links attiva! I link sono salvati in modo permanente.'
+            : 'Connessione al database stabilita. Configurazione tabella in corso...',
+        });
+      } catch (err: any) {
+        console.warn('Database status check postgres error in server.ts:', err);
+      }
+    }
+
     try {
-      const { data, error } = await supabase.from('deep_links').select('slug').limit(1);
+      const { data, error } = await supabase!.from('deep_links').select('slug').limit(1);
       if (error) {
         return res.json({
           hasSupabase: true,
+          hasPostgres: false,
           tableReady: false,
           error: error.message,
           code: error.code,
@@ -93,12 +176,14 @@ async function startServer() {
       }
       return res.json({
         hasSupabase: true,
+        hasPostgres: false,
         tableReady: true,
         message: 'Supabase è attivo e la tabella deep_links è pronta per il salvataggio permanente.',
       });
     } catch (err: any) {
       return res.json({
         hasSupabase: true,
+        hasPostgres: false,
         tableReady: false,
         error: err.message,
       });
@@ -107,7 +192,22 @@ async function startServer() {
 
   // List all deep links
   app.get('/api/links', async (req: Request, res: Response) => {
-    if (supabase) {
+    if (sqlClient) {
+      try {
+        await ensureTableExists();
+        const rows = await sqlClient`SELECT * FROM public.deep_links ORDER BY created_at DESC LIMIT 200;`;
+        if (rows && rows.length > 0) {
+          const map = new Map<string, DeepLink>();
+          linksCache.forEach((l) => map.set(l.slug.toLowerCase(), l));
+          rows.forEach((row: any) => {
+            if (row.data) {
+              map.set(row.slug.toLowerCase(), row.data);
+            }
+          });
+          return res.json(Array.from(map.values()));
+        }
+      } catch {}
+    } else if (supabase) {
       try {
         const { data, error } = await supabase.from('deep_links').select('*');
         if (!error && Array.isArray(data) && data.length > 0) {
@@ -172,7 +272,42 @@ async function startServer() {
         linksCache.unshift(norm);
       }
 
-      if (supabase) {
+      if (sqlClient) {
+        try {
+          await ensureTableExists();
+          await sqlClient`
+            INSERT INTO public.deep_links (
+              slug, id, original_url, platform, target_mode, title, folder, description, image_url, clicks, stats, data, updated_at
+            ) VALUES (
+              ${norm.slug.toLowerCase()},
+              ${norm.id},
+              ${norm.originalUrl},
+              ${norm.platform},
+              ${norm.targetMode},
+              ${norm.title},
+              ${norm.folder || norm.project || ''},
+              ${norm.description || ''},
+              ${norm.imageUrl || ''},
+              ${norm.clicks},
+              ${JSON.stringify(norm.stats)},
+              ${JSON.stringify(norm)},
+              NOW()
+            )
+            ON CONFLICT (slug) DO UPDATE SET
+              original_url = EXCLUDED.original_url,
+              platform = EXCLUDED.platform,
+              target_mode = EXCLUDED.target_mode,
+              title = EXCLUDED.title,
+              folder = EXCLUDED.folder,
+              description = EXCLUDED.description,
+              image_url = EXCLUDED.image_url,
+              data = EXCLUDED.data,
+              updated_at = NOW();
+          `;
+        } catch (err) {
+          console.warn('Direct postgres upsert failed in sync:', err);
+        }
+      } else if (supabase) {
         await supabase.from('deep_links').upsert(
           {
             slug: norm.slug.toLowerCase(),
@@ -250,6 +385,40 @@ async function startServer() {
 
     linksCache.unshift(newLink);
     saveLinks(linksCache);
+
+    if (sqlClient) {
+      ensureTableExists().then(() => {
+        sqlClient!`
+          INSERT INTO public.deep_links (
+            slug, id, original_url, platform, target_mode, title, folder, description, image_url, clicks, stats, data, updated_at
+          ) VALUES (
+            ${newLink.slug.toLowerCase()},
+            ${newLink.id},
+            ${newLink.originalUrl},
+            ${newLink.platform},
+            ${newLink.targetMode},
+            ${newLink.title},
+            ${newLink.folder || newLink.project || ''},
+            ${newLink.description || ''},
+            ${newLink.imageUrl || ''},
+            0,
+            ${JSON.stringify(newLink.stats)},
+            ${JSON.stringify(newLink)},
+            NOW()
+          )
+          ON CONFLICT (slug) DO UPDATE SET
+            original_url = EXCLUDED.original_url,
+            platform = EXCLUDED.platform,
+            target_mode = EXCLUDED.target_mode,
+            title = EXCLUDED.title,
+            folder = EXCLUDED.folder,
+            description = EXCLUDED.description,
+            image_url = EXCLUDED.image_url,
+            data = EXCLUDED.data,
+            updated_at = NOW();
+        `.then(() => {}, (err) => console.warn('Postgres upsert failed:', err));
+      });
+    }
 
     if (supabase) {
       supabase
@@ -381,9 +550,104 @@ async function startServer() {
   // -------------------------------------------------------------
   // THE DEEP LINK REDIRECTOR / GATEWAY: /l/:slug
   // -------------------------------------------------------------
-  app.get('/l/:slug', (req: Request, res: Response) => {
+  app.get('/l/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
-    const link = linksCache.find((l) => l.slug === slug);
+    let link = linksCache.find((l) => l.slug.toLowerCase() === slug.toLowerCase());
+
+    // 1. If not found in cache, lookup in database
+    if (!link && sqlClient) {
+      try {
+        await ensureTableExists();
+        const rows = await sqlClient`SELECT * FROM public.deep_links WHERE LOWER(slug) = ${slug.toLowerCase()} LIMIT 1;`;
+        if (rows && rows.length > 0) {
+          const row = rows[0];
+          link = row.data || {
+            id: row.id || `link_${row.slug}`,
+            slug: row.slug,
+            originalUrl: row.original_url,
+            platform: row.platform || detectPlatform(row.original_url),
+            targetMode: row.target_mode || 'smart',
+            title: row.title || 'Deep Link',
+            folder: row.folder || '',
+            project: row.folder || '',
+            description: row.description || '',
+            imageUrl: row.image_url || '',
+            createdAt: row.created_at || new Date().toISOString(),
+            updatedAt: row.updated_at || new Date().toISOString(),
+            clicks: Number(row.clicks || 0),
+            stats: row.stats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+          if (link) linksCache.unshift(link);
+        }
+      } catch {}
+    } else if (!link && supabase) {
+      try {
+        const { data } = await supabase.from('deep_links').select('*').ilike('slug', slug.toLowerCase()).maybeSingle();
+        if (data) {
+          link = data.data || {
+            id: data.id || `link_${data.slug}`,
+            slug: data.slug,
+            originalUrl: data.original_url,
+            platform: data.platform || detectPlatform(data.original_url),
+            targetMode: data.target_mode || 'smart',
+            title: data.title || 'Deep Link',
+            folder: data.folder || '',
+            project: data.folder || '',
+            description: data.description || '',
+            imageUrl: data.image_url || '',
+            createdAt: data.created_at || new Date().toISOString(),
+            updatedAt: data.updated_at || new Date().toISOString(),
+            clicks: Number(data.clicks || 0),
+            stats: data.stats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+          if (link) linksCache.unshift(link);
+        }
+      } catch {}
+    }
+
+    // 2. Base64 fallback if slug encodes a URL
+    if (!link && (slug.startsWith('b_') || slug.startsWith('_'))) {
+      try {
+        const rawB64 = slug.startsWith('b_') ? slug.slice(2) : slug.slice(1);
+        const decodedUrl = Buffer.from(rawB64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+        if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
+          link = {
+            id: 'b64',
+            slug,
+            originalUrl: decodedUrl,
+            platform: detectPlatform(decodedUrl),
+            targetMode: 'smart',
+            title: 'Reindirizzamento...',
+            description: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            clicks: 0,
+            stats: {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+        }
+      } catch {}
+    }
 
     if (!link) {
       return res.status(404).send(`
