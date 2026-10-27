@@ -23,6 +23,8 @@ interface DeepLink {
   platform: string;
   targetMode: string;
   title: string;
+  folder?: string;
+  project?: string;
   description: string;
   imageUrl?: string;
   clicks: number;
@@ -591,6 +593,8 @@ export default async function handler(req: any, res: any) {
       platform,
       targetMode: body.targetMode || (platform === 'generic' ? 'system_browser' : 'smart'),
       title: body.title || 'Nuovo Deep Link',
+      folder: body.folder || body.project || '',
+      project: body.folder || body.project || '',
       description: body.description || '',
       clicks: 0,
       stats: {

@@ -34,6 +34,8 @@ export interface DeepLink {
   platform: SupportedPlatform;
   targetMode: TargetMode;
   title: string;
+  folder?: string;
+  project?: string;
   description: string;
   imageUrl?: string;
   utm?: {

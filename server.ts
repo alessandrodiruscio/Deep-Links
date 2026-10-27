@@ -198,7 +198,7 @@ async function startServer() {
 
   // Create deep link
   app.post('/api/links', (req: Request, res: Response) => {
-    const { originalUrl, slug: customSlug, targetMode, title, description, imageUrl, utm } = req.body;
+    const { originalUrl, slug: customSlug, targetMode, title, folder, project, description, imageUrl, utm } = req.body;
 
     if (!originalUrl) {
       return res.status(400).json({ error: 'URL di destinazione obbligatorio' });
@@ -222,6 +222,8 @@ async function startServer() {
       platform,
       targetMode: targetMode || (platform === 'generic' ? 'system_browser' : 'smart'),
       title: title || `${platform.toUpperCase()} Deep Link`,
+      folder: folder || project || '',
+      project: folder || project || '',
       description:
         description ||
         'Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.',
@@ -285,7 +287,7 @@ async function startServer() {
       return res.status(404).json({ error: 'Link non trovato' });
     }
 
-    const { originalUrl, slug, targetMode, title, description, imageUrl, utm } = req.body;
+    const { originalUrl, slug, targetMode, title, folder, project, description, imageUrl, utm } = req.body;
 
     const existing = linksCache[index];
     const platform = originalUrl ? detectPlatform(originalUrl) : existing.platform;
@@ -305,6 +307,8 @@ async function startServer() {
       platform,
       targetMode: targetMode || existing.targetMode,
       title: title !== undefined ? title : existing.title,
+      folder: folder !== undefined ? folder : (project !== undefined ? project : existing.folder),
+      project: folder !== undefined ? folder : (project !== undefined ? project : existing.project),
       description: description !== undefined ? description : existing.description,
       imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
       utm: utm !== undefined ? utm : existing.utm,

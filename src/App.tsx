@@ -24,6 +24,8 @@ const normalizeLink = (l: any): DeepLink => ({
   platform: l?.platform || detectPlatform(l?.originalUrl || ''),
   targetMode: l?.targetMode || 'smart',
   title: l?.title || 'Deep Link',
+  folder: l?.folder || l?.project || '',
+  project: l?.folder || l?.project || '',
   description: l?.description || '',
   imageUrl: l?.imageUrl || '',
   clicks: typeof l?.clicks === 'number' ? l.clicks : 0,
@@ -439,6 +441,11 @@ export default function App() {
         }}
         onSave={handleSaveLink}
         initialData={editingLink}
+        existingFolders={Array.from(
+          new Set(links.map((l) => l.folder || l.project).filter(Boolean) as string[])
+        )}
+        customBaseUrl={customBaseUrl}
+        onOpenQrModal={handleOpenQrModal}
       />
 
       {qrModalData && (

@@ -8,6 +8,8 @@ export const INITIAL_SAMPLE_LINKS: DeepLink[] = [
     platform: 'generic',
     targetMode: 'system_browser',
     title: 'Offerta Esclusiva Autunno - Shop Ufficiale',
+    folder: 'E-Commerce',
+    project: 'E-Commerce',
     description: 'Sconti fino al 40% su tutti i prodotti. Pagamenti sicuri con Apple Pay e Google Pay.',
     imageUrl: 'https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=800',
     utm: {
@@ -40,6 +42,8 @@ export const INITIAL_SAMPLE_LINKS: DeepLink[] = [
     platform: 'amazon',
     targetMode: 'native_app',
     title: 'Apple MacBook Air con chip M2 - Amazon.it',
+    folder: 'Affiliazioni',
+    project: 'Affiliazioni',
     description: 'Acquista direttamente nell’app Amazon con 1-Click e spedizione Prime gratuita.',
     imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800',
     utm: {
@@ -72,6 +76,8 @@ export const INITIAL_SAMPLE_LINKS: DeepLink[] = [
     platform: 'youtube',
     targetMode: 'native_app',
     title: 'Nuovo Video: Come Automatizzare il Tuo Business Online',
+    folder: 'YouTube',
+    project: 'YouTube',
     description: 'Guarda in alta definizione nell’app YouTube. Iscriviti con un solo tocco!',
     imageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800',
     utm: {
@@ -104,6 +110,8 @@ export const INITIAL_SAMPLE_LINKS: DeepLink[] = [
     platform: 'spotify',
     targetMode: 'native_app',
     title: 'Deep Focus & Productivity Beats - Spotify',
+    folder: 'Musica',
+    project: 'Musica',
     description: 'Ascolta in background nell’app Spotify senza interruzioni.',
     createdAt: '2026-10-25T16:00:00.000Z',
     updatedAt: '2026-10-26T02:30:00.000Z',
