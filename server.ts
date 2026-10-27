@@ -389,12 +389,26 @@ async function startServer() {
 
     // Prepare Smart Gateway HTML
     const sanitizedTitle = (link.title || 'Reindirizzamento...').replace(/"/g, '&quot;');
-    const sanitizedDesc = (link.description || '').replace(/"/g, '&quot;');
-    const sanitizedImg = (link.imageUrl || '').replace(/"/g, '&quot;');
-    const isApp = protocols.platform !== 'generic';
-    const primaryTarget = isAndroid
-      ? protocols.androidIntent
-      : (isApp ? protocols.iosScheme : protocols.webFallback);
+    const isApp = protocols.platform !== 'generic' && link.targetMode !== 'system_browser';
+
+    let primaryTarget = protocols.webFallback;
+    if (isAndroid) {
+      primaryTarget = isApp ? protocols.androidIntent : (protocols.androidBrowserIntent || protocols.androidIntent);
+    } else if (isIOS) {
+      if (isApp) {
+        primaryTarget = protocols.iosScheme;
+      } else if (isInstagram) {
+        // Break out of Instagram iOS directly into Safari / default system browser
+        primaryTarget = `instagram://extbrowser/?url=${encodeURIComponent(protocols.webFallback)}`;
+      } else if (isFacebook) {
+        // Break out of Facebook iOS directly into default system browser
+        primaryTarget = `fb://extbrowser/?url=${encodeURIComponent(protocols.webFallback)}`;
+      } else {
+        primaryTarget = protocols.webFallback;
+      }
+    }
+
+    const targetDisplayName = isApp ? protocols.platformName : 'Browser Predefinito';
 
     const html = `<!DOCTYPE html>
 <html lang="it">
@@ -548,7 +562,7 @@ async function startServer() {
       </div>
     </div>
 
-    <h2>Apertura di ${protocols.platformName}...</h2>
+    <h2>Apertura di ${targetDisplayName}...</h2>
     <p class="desc">${sanitizedTitle}</p>
 
     <div class="progress-bar">
@@ -563,30 +577,61 @@ async function startServer() {
 
   <script>
     (function() {
-      var targetUrl = ${JSON.stringify(primaryTarget)};
-      var fallbackUrl = ${JSON.stringify(protocols.webFallback)};
+      var primary = ${JSON.stringify(primaryTarget)};
+      var fallback = ${JSON.stringify(protocols.webFallback)};
       var isApp = ${Boolean(isApp)};
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+      var isInstagram = /Instagram/i.test(ua);
+      var isFacebook = /FBAN|FBAV/i.test(ua);
+
+      // Client-side refinement if User-Agent header was modified or masked
+      if (!isApp) {
+        if (isIOS && isInstagram) {
+          primary = 'instagram://extbrowser/?url=' + encodeURIComponent(fallback);
+        } else if (isIOS && isFacebook) {
+          primary = 'fb://extbrowser/?url=' + encodeURIComponent(fallback);
+        } else if (isAndroid) {
+          var clean = fallback.replace(/^https?:\\/\\//, '');
+          primary = 'intent://' + clean + '#Intent;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;end;';
+        }
+      }
+
+      // Update button target
+      var btn = document.getElementById('launchBtn');
+      if (btn) {
+        btn.href = primary;
+      }
 
       // 1. Immediate trigger via replace & href
       try {
-        window.location.replace(targetUrl);
+        window.location.replace(primary);
       } catch (e) {
-        window.location.href = targetUrl;
+        window.location.href = primary;
       }
 
       // 2. Programmatic click on button
-      var btn = document.getElementById('launchBtn');
       if (btn && typeof btn.click === 'function') {
         try { btn.click(); } catch (e) {}
       }
 
-      // 3. Fallback timer: if app is not installed, transition smoothly to web
+      // 3. User interaction listener (instant breakout upon any touch/tap on screen)
+      function triggerBreakout() {
+        try {
+          window.location.href = primary;
+        } catch (e) {}
+      }
+      window.addEventListener('touchstart', triggerBreakout, { passive: true, once: true });
+      window.addEventListener('click', triggerBreakout, { once: true });
+
+      // 4. Fallback for native apps if not installed
       if (isApp) {
         setTimeout(function() {
           try {
-            window.location.replace(fallbackUrl);
+            window.location.replace(fallback);
           } catch (e) {
-            window.location.href = fallbackUrl;
+            window.location.href = fallback;
           }
         }, 2200);
       }

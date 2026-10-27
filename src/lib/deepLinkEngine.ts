@@ -96,20 +96,22 @@ export function generateProtocols(
   const androidBrowserIntent = `intent://${hostAndPath}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;end;`;
   const iosChromeScheme = `googlechrome://${hostAndPath}`;
 
-  // If user explicitly asks for system_browser escape (force Safari/Chrome)
+  // If user explicitly asks for system_browser escape (force Safari/Chrome) or generic web URL
   if (targetMode === 'system_browser' || platform === 'generic') {
+    const encodedUrl = encodeURIComponent(url);
     return {
       platform,
-      platformName: platform === 'generic' ? 'Pagina Web / E-Commerce' : getPlatformName(platform),
-      iosScheme: url,
+      platformName: platform === 'generic' ? 'Browser Predefinito' : getPlatformName(platform),
+      iosScheme: `instagram://extbrowser/?url=${encodedUrl}`,
       iosChromeScheme,
-      androidIntent: androidChromeIntent, // Uses Chrome package on Android to break out of Instagram WebView
+      androidIntent: androidBrowserIntent, // Uses universal Android Intent to launch default system browser
       androidChromeIntent,
       androidBrowserIntent,
       webFallback: url,
       recommendedMode: 'system_browser',
+      isApp: false,
       explanation:
-        'Su Android lancia direttamente Chrome/Browser predefinito bypassando il webview in-app. Su iOS guida l’utente con il bridge ad aprire in Safari.',
+        'Apre automaticamente il sito nel browser predefinito (Safari/Chrome) bypassando il webview in-app di Instagram e Facebook.',
     };
   }
 

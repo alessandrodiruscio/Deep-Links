@@ -227,7 +227,7 @@ function computeProtocols(url: string, platform: string, mode: string) {
     default: {
       platformName = 'Browser Predefinito';
       isApp = false;
-      androidIntent = androidChromeIntent;
+      androidIntent = androidBrowserIntent;
       iosScheme = cleanUrl;
       break;
     }
@@ -743,10 +743,27 @@ export default async function handler(req: any, res: any) {
     // Compute protocols
     const protocols = computeProtocols(link.originalUrl, link.platform, link.targetMode);
     const sanitizedTitle = (link.title || 'Reindirizzamento...').replace(/"/g, '&quot;');
-    // Determine device-specific target URL for instant launch
-    const primaryTarget = isAndroid
-      ? protocols.androidIntent
-      : (protocols.isApp ? protocols.iosScheme : protocols.fallback);
+    const isApp = Boolean(protocols.isApp);
+
+    // Determine target URL for instant launch based on device and context:
+    let primaryTarget = protocols.fallback;
+    if (isAndroid) {
+      primaryTarget = isApp ? protocols.androidIntent : protocols.androidBrowserIntent;
+    } else if (isIOS) {
+      if (isApp) {
+        primaryTarget = protocols.iosScheme;
+      } else if (isInstagram) {
+        // Break out of Instagram iOS directly into Safari / system default browser
+        primaryTarget = `instagram://extbrowser/?url=${encodeURIComponent(protocols.fallback)}`;
+      } else if (isFacebook) {
+        // Break out of Facebook iOS directly into system default browser
+        primaryTarget = `fb://extbrowser/?url=${encodeURIComponent(protocols.fallback)}`;
+      } else {
+        primaryTarget = protocols.fallback;
+      }
+    }
+
+    const targetDisplayName = isApp ? protocols.platformName : 'Browser Predefinito';
 
     const html = `<!DOCTYPE html>
 <html lang="it">
@@ -900,7 +917,7 @@ export default async function handler(req: any, res: any) {
       </div>
     </div>
 
-    <h2>Apertura di ${protocols.platformName}...</h2>
+    <h2>Apertura di ${targetDisplayName}...</h2>
     <p class="desc">${sanitizedTitle}</p>
 
     <div class="progress-bar">
@@ -915,30 +932,61 @@ export default async function handler(req: any, res: any) {
 
   <script>
     (function() {
-      var targetUrl = ${JSON.stringify(primaryTarget)};
-      var fallbackUrl = ${JSON.stringify(protocols.fallback)};
+      var primary = ${JSON.stringify(primaryTarget)};
+      var fallback = ${JSON.stringify(protocols.fallback)};
       var isApp = ${Boolean(protocols.isApp)};
+      var ua = navigator.userAgent || '';
+      var isIOS = /iPhone|iPad|iPod/i.test(ua);
+      var isAndroid = /Android/i.test(ua);
+      var isInstagram = /Instagram/i.test(ua);
+      var isFacebook = /FBAN|FBAV/i.test(ua);
+
+      // Client-side refinement if User-Agent header was modified or masked
+      if (!isApp) {
+        if (isIOS && isInstagram) {
+          primary = 'instagram://extbrowser/?url=' + encodeURIComponent(fallback);
+        } else if (isIOS && isFacebook) {
+          primary = 'fb://extbrowser/?url=' + encodeURIComponent(fallback);
+        } else if (isAndroid) {
+          var clean = fallback.replace(/^https?:\\/\\//, '');
+          primary = 'intent://' + clean + '#Intent;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;scheme=https;end;';
+        }
+      }
+
+      // Update button target
+      var btn = document.getElementById('launchBtn');
+      if (btn) {
+        btn.href = primary;
+      }
 
       // 1. Immediate trigger via replace & href
       try {
-        window.location.replace(targetUrl);
+        window.location.replace(primary);
       } catch (e) {
-        window.location.href = targetUrl;
+        window.location.href = primary;
       }
 
       // 2. Programmatic click on button
-      var btn = document.getElementById('launchBtn');
       if (btn && typeof btn.click === 'function') {
         try { btn.click(); } catch (e) {}
       }
 
-      // 3. Fallback timer: if app is not installed, transition smoothly to web
+      // 3. User interaction listener (instant breakout upon any touch/tap on screen)
+      function triggerBreakout() {
+        try {
+          window.location.href = primary;
+        } catch (e) {}
+      }
+      window.addEventListener('touchstart', triggerBreakout, { passive: true, once: true });
+      window.addEventListener('click', triggerBreakout, { once: true });
+
+      // 4. Fallback for native apps if not installed
       if (isApp) {
         setTimeout(function() {
           try {
-            window.location.replace(fallbackUrl);
+            window.location.replace(fallback);
           } catch (e) {
-            window.location.href = fallbackUrl;
+            window.location.href = fallback;
           }
         }, 2200);
       }
