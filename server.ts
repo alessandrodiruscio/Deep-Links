@@ -1,9 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config();
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
+import mysql from 'mysql2/promise';
 import { applyUtm, detectPlatform, generateProtocols, slugify } from './src/lib/deepLinkEngine';
 import { INITIAL_SAMPLE_LINKS } from './src/lib/sampleLinks';
 import { DeepLink } from './src/types/deepLink';
@@ -30,7 +33,78 @@ if (POSTGRES_URL) {
   }
 }
 
-// 2. Supabase REST SDK Auto-detection
+// 2. Hostinger MySQL Auto-Detection
+const MYSQL_URL = process.env.MYSQL_URL || process.env.DATABASE_URL_MYSQL || '';
+const MYSQL_HOST = process.env.MYSQL_HOST || process.env.HOSTINGER_DB_HOST || 'srv861.hstgr.io';
+const MYSQL_PORT = Number(process.env.MYSQL_PORT || 3306);
+const MYSQL_DATABASE = process.env.MYSQL_DATABASE || process.env.HOSTINGER_DB_NAME || 'u361584540_DeepLinks';
+const MYSQL_USER = process.env.MYSQL_USER || process.env.HOSTINGER_DB_USER || 'u361584540_DeepLinks_user';
+const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || process.env.HOSTINGER_DB_PASSWORD || '6p4cQSfEhK3xXCX';
+
+let mysqlPool: mysql.Pool | null = null;
+if (MYSQL_URL) {
+  try {
+    mysqlPool = mysql.createPool({
+      uri: MYSQL_URL,
+      waitForConnections: true,
+      connectionLimit: 4,
+      queueLimit: 0,
+      connectTimeout: 8000,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize MySQL pool in server.ts from MYSQL_URL:', err);
+  }
+} else if (MYSQL_HOST && MYSQL_DATABASE && MYSQL_USER) {
+  try {
+    mysqlPool = mysql.createPool({
+      host: MYSQL_HOST,
+      port: MYSQL_PORT,
+      database: MYSQL_DATABASE,
+      user: MYSQL_USER,
+      password: MYSQL_PASSWORD,
+      waitForConnections: true,
+      connectionLimit: 4,
+      queueLimit: 0,
+      connectTimeout: 8000,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize MySQL pool in server.ts from Hostinger credentials:', err);
+  }
+}
+
+let mysqlTableEnsured = false;
+async function ensureMySQLTableExists(): Promise<boolean> {
+  if (mysqlTableEnsured) return true;
+  if (!mysqlPool) return false;
+  try {
+    await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS deep_links (
+        id VARCHAR(64) PRIMARY KEY,
+        slug VARCHAR(128) UNIQUE NOT NULL,
+        original_url TEXT NOT NULL,
+        platform VARCHAR(32) NOT NULL DEFAULT 'generic',
+        target_mode VARCHAR(32) NOT NULL DEFAULT 'smart',
+        title VARCHAR(255) NOT NULL DEFAULT '',
+        folder VARCHAR(128) DEFAULT '',
+        project VARCHAR(128) DEFAULT '',
+        description TEXT DEFAULT '',
+        image_url TEXT DEFAULT '',
+        clicks INT DEFAULT 0,
+        stats JSON DEFAULT NULL,
+        data JSON DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    mysqlTableEnsured = true;
+    return true;
+  } catch (err) {
+    console.warn('ensureMySQLTableExists in server.ts error:', err);
+    throw err;
+  }
+}
+
+// 3. Supabase REST SDK Auto-detection
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -138,13 +212,43 @@ async function startServer() {
   // -------------------------------------------------------------
 
   // Database status check
+  // Database status check
   app.get('/api/database-status', async (req: Request, res: Response) => {
+    // 1. Hostinger MySQL
+    if (mysqlPool) {
+      try {
+        const tableReady = await ensureMySQLTableExists();
+        return res.json({
+          hasDatabase: true,
+          hasMySQL: true,
+          hasSupabase: false,
+          hasPostgres: false,
+          tableReady,
+          message: tableReady
+            ? 'Database Hostinger MySQL connesso e tabella deep_links attiva! I link sono salvati in modo permanente.'
+            : 'Connessione a Hostinger MySQL stabilita. Configurazione tabella in corso...',
+        });
+      } catch (err: any) {
+        return res.json({
+          hasDatabase: true,
+          hasMySQL: true,
+          hasSupabase: false,
+          hasPostgres: false,
+          tableReady: false,
+          error: err.message,
+          message: 'Errore connessione Hostinger MySQL: verifica che Remote MySQL sia abilitato su Hostinger.',
+        });
+      }
+    }
+
     if (!sqlClient && !supabase) {
       return res.json({
+        hasDatabase: false,
+        hasMySQL: false,
         hasSupabase: false,
         hasPostgres: false,
         tableReady: false,
-        message: 'Nessuna variabile POSTGRES_URL o SUPABASE_URL trovata nell\'ambiente.',
+        message: 'Nessun database configurato.',
       });
     }
 
@@ -152,6 +256,8 @@ async function startServer() {
       try {
         const tableReady = await ensureTableExists();
         return res.json({
+          hasDatabase: true,
+          hasMySQL: false,
           hasSupabase: true,
           hasPostgres: true,
           tableReady,
@@ -168,6 +274,8 @@ async function startServer() {
       const { data, error } = await supabase!.from('deep_links').select('slug').limit(1);
       if (error) {
         return res.json({
+          hasDatabase: true,
+          hasMySQL: false,
           hasSupabase: true,
           hasPostgres: false,
           tableReady: false,
@@ -177,6 +285,8 @@ async function startServer() {
         });
       }
       return res.json({
+        hasDatabase: true,
+        hasMySQL: false,
         hasSupabase: true,
         hasPostgres: false,
         tableReady: true,
@@ -184,6 +294,8 @@ async function startServer() {
       });
     } catch (err: any) {
       return res.json({
+        hasDatabase: true,
+        hasMySQL: false,
         hasSupabase: true,
         hasPostgres: false,
         tableReady: false,
@@ -194,7 +306,56 @@ async function startServer() {
 
   // List all deep links (User-created only)
   app.get('/api/links', async (req: Request, res: Response) => {
-    if (sqlClient) {
+    if (mysqlPool) {
+      try {
+        await ensureMySQLTableExists();
+        const [rows]: any = await mysqlPool.query('SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 200');
+        if (Array.isArray(rows) && rows.length > 0) {
+          const links = rows
+            .map((r: any) => {
+              let parsedData = r.data;
+              if (typeof parsedData === 'string') {
+                try { parsedData = JSON.parse(parsedData); } catch {}
+              }
+              if (parsedData && typeof parsedData === 'object') {
+                return {
+                  ...parsedData,
+                  clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
+                };
+              }
+              let parsedStats = r.stats;
+              if (typeof parsedStats === 'string') {
+                try { parsedStats = JSON.parse(parsedStats); } catch {}
+              }
+              return {
+                id: r.id || `link_${r.slug}`,
+                slug: r.slug,
+                originalUrl: r.original_url || r.originalUrl,
+                platform: r.platform || detectPlatform(r.original_url || ''),
+                targetMode: r.target_mode || 'smart',
+                title: r.title || 'Deep Link',
+                folder: r.folder || r.project || '',
+                project: r.folder || r.project || '',
+                description: r.description || '',
+                imageUrl: r.image_url || '',
+                clicks: Number(r.clicks || 0),
+                stats: parsedStats || {
+                  iosClicks: 0,
+                  androidClicks: 0,
+                  desktopClicks: 0,
+                  inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+                  appOpens: 0,
+                  browserEscapes: 0,
+                },
+              };
+            })
+            .filter((l: any) => l && !SAMPLE_SLUGS.has((l.slug || '').toLowerCase()));
+          return res.json(links);
+        }
+      } catch (err) {
+        console.warn('MySQL get links in server.ts error:', err);
+      }
+    } else if (sqlClient) {
       try {
         await ensureTableExists();
         const rows = await sqlClient`SELECT * FROM public.deep_links ORDER BY created_at DESC LIMIT 200;`;
@@ -264,6 +425,46 @@ async function startServer() {
         linksCache[idx] = { ...linksCache[idx], ...norm };
       } else {
         linksCache.unshift(norm);
+      }
+
+      if (mysqlPool) {
+        try {
+          await ensureMySQLTableExists();
+          await mysqlPool.query(
+            `INSERT INTO deep_links (
+              id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+              original_url = VALUES(original_url),
+              platform = VALUES(platform),
+              target_mode = VALUES(target_mode),
+              title = VALUES(title),
+              folder = VALUES(folder),
+              project = VALUES(project),
+              description = VALUES(description),
+              image_url = VALUES(image_url),
+              stats = VALUES(stats),
+              data = VALUES(data),
+              updated_at = CURRENT_TIMESTAMP`,
+            [
+              norm.id,
+              norm.slug.toLowerCase(),
+              norm.originalUrl,
+              norm.platform,
+              norm.targetMode,
+              norm.title,
+              norm.folder || norm.project || '',
+              norm.folder || norm.project || '',
+              norm.description || '',
+              norm.imageUrl || '',
+              norm.clicks || 0,
+              JSON.stringify(norm.stats || {}),
+              JSON.stringify(norm),
+            ]
+          );
+        } catch (err) {
+          console.warn('Hostinger MySQL sync upsert failed in server.ts:', err);
+        }
       }
 
       if (sqlClient) {
@@ -380,6 +581,43 @@ async function startServer() {
     linksCache.unshift(newLink);
     saveLinks(linksCache);
 
+    if (mysqlPool) {
+      ensureMySQLTableExists().then(() => {
+        mysqlPool!.query(
+          `INSERT INTO deep_links (
+            id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            original_url = VALUES(original_url),
+            platform = VALUES(platform),
+            target_mode = VALUES(target_mode),
+            title = VALUES(title),
+            folder = VALUES(folder),
+            project = VALUES(project),
+            description = VALUES(description),
+            image_url = VALUES(image_url),
+            stats = VALUES(stats),
+            data = VALUES(data),
+            updated_at = CURRENT_TIMESTAMP`,
+          [
+            newLink.id,
+            newLink.slug.toLowerCase(),
+            newLink.originalUrl,
+            newLink.platform,
+            newLink.targetMode,
+            newLink.title,
+            newLink.folder || newLink.project || '',
+            newLink.folder || newLink.project || '',
+            newLink.description || '',
+            newLink.imageUrl || '',
+            0,
+            JSON.stringify(newLink.stats || {}),
+            JSON.stringify(newLink),
+          ]
+        ).catch((err) => console.warn('MySQL insert failed in server.ts:', err));
+      });
+    }
+
     if (sqlClient) {
       ensureTableExists().then(() => {
         sqlClient!`
@@ -490,6 +728,12 @@ async function startServer() {
     linksCache = linksCache.filter((l) => l.id !== id);
     saveLinks(linksCache);
 
+    if (mysqlPool && toDelete) {
+      mysqlPool
+        .query('DELETE FROM deep_links WHERE LOWER(slug) = ? OR id = ?', [toDelete.slug.toLowerCase(), id])
+        .catch(() => {});
+    }
+
     if (supabase && toDelete) {
       supabase
         .from('deep_links')
@@ -547,6 +791,61 @@ async function startServer() {
   app.get('/l/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     let link = linksCache.find((l) => l.slug.toLowerCase() === slug.toLowerCase());
+
+    // 1. If not found in cache, lookup in Hostinger MySQL
+    if (!link && mysqlPool) {
+      try {
+        await ensureMySQLTableExists();
+        const [rows]: any = await mysqlPool.query(
+          'SELECT * FROM deep_links WHERE LOWER(slug) = ? LIMIT 1',
+          [slug.toLowerCase()]
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          let parsedData = r.data;
+          if (typeof parsedData === 'string') {
+            try { parsedData = JSON.parse(parsedData); } catch {}
+          }
+          if (parsedData && typeof parsedData === 'object') {
+            link = {
+              ...parsedData,
+              clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
+            };
+          } else {
+            let parsedStats = r.stats;
+            if (typeof parsedStats === 'string') {
+              try { parsedStats = JSON.parse(parsedStats); } catch {}
+            }
+            link = {
+              id: r.id || `link_${r.slug}`,
+              slug: r.slug,
+              originalUrl: r.original_url || r.originalUrl,
+              platform: r.platform || detectPlatform(r.original_url || ''),
+              targetMode: r.target_mode || 'smart',
+              title: r.title || 'Deep Link',
+              folder: r.folder || r.project || '',
+              project: r.folder || r.project || '',
+              description: r.description || '',
+              imageUrl: r.image_url || '',
+              createdAt: r.created_at || new Date().toISOString(),
+              updatedAt: r.updated_at || new Date().toISOString(),
+              clicks: Number(r.clicks || 0),
+              stats: parsedStats || {
+                iosClicks: 0,
+                androidClicks: 0,
+                desktopClicks: 0,
+                inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+                appOpens: 0,
+                browserEscapes: 0,
+              },
+            };
+          }
+          if (link) linksCache.unshift(link);
+        }
+      } catch (err) {
+        console.warn('MySQL lookup in server.ts /l/:slug error:', err);
+      }
+    }
 
     // 1. If not found in cache, lookup in database
     if (!link && sqlClient) {
@@ -698,6 +997,12 @@ async function startServer() {
       link.stats.browserEscapes += 1;
     }
     saveLinks(linksCache);
+
+    if (mysqlPool) {
+      mysqlPool
+        .query('UPDATE deep_links SET clicks = clicks + 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(slug) = ?', [slug.toLowerCase()])
+        .catch(() => {});
+    }
 
     const finalTargetUrl = applyUtm(link.originalUrl, link.utm);
     const protocols = generateProtocols(finalTargetUrl, link.targetMode);

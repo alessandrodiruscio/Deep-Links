@@ -1,6 +1,7 @@
-// Vercel Serverless Function - Native Handler with Direct PostgreSQL & Supabase Persistence
+// Vercel Serverless Function - Native Handler with Direct PostgreSQL, Hostinger MySQL & Supabase Persistence
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
+import mysql from 'mysql2/promise';
 
 // 1. Direct PostgreSQL Auto-Detection (Injected automatically by Vercel Marketplace Supabase)
 const POSTGRES_URL =
@@ -24,7 +25,46 @@ if (POSTGRES_URL) {
   }
 }
 
-// 2. Supabase REST SDK Auto-detection (Standard Vercel + Supabase environment variables)
+// 2. Hostinger MySQL Auto-Detection (Configured via MYSQL_URL or individual credentials)
+const MYSQL_URL = process.env.MYSQL_URL || process.env.DATABASE_URL_MYSQL || '';
+const MYSQL_HOST = process.env.MYSQL_HOST || process.env.HOSTINGER_DB_HOST || 'srv861.hstgr.io';
+const MYSQL_PORT = Number(process.env.MYSQL_PORT || 3306);
+const MYSQL_DATABASE = process.env.MYSQL_DATABASE || process.env.HOSTINGER_DB_NAME || 'u361584540_DeepLinks';
+const MYSQL_USER = process.env.MYSQL_USER || process.env.HOSTINGER_DB_USER || 'u361584540_DeepLinks_user';
+const MYSQL_PASSWORD = process.env.MYSQL_PASSWORD || process.env.HOSTINGER_DB_PASSWORD || '6p4cQSfEhK3xXCX';
+
+let mysqlPool: mysql.Pool | null = null;
+if (MYSQL_URL) {
+  try {
+    mysqlPool = mysql.createPool({
+      uri: MYSQL_URL,
+      waitForConnections: true,
+      connectionLimit: 4,
+      queueLimit: 0,
+      connectTimeout: 8000,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize MySQL pool from MYSQL_URL:', err);
+  }
+} else if (MYSQL_HOST && MYSQL_DATABASE && MYSQL_USER) {
+  try {
+    mysqlPool = mysql.createPool({
+      host: MYSQL_HOST,
+      port: MYSQL_PORT,
+      database: MYSQL_DATABASE,
+      user: MYSQL_USER,
+      password: MYSQL_PASSWORD,
+      waitForConnections: true,
+      connectionLimit: 4,
+      queueLimit: 0,
+      connectTimeout: 8000,
+    });
+  } catch (err) {
+    console.warn('Failed to initialize MySQL pool from Hostinger credentials:', err);
+  }
+}
+
+// 3. Supabase REST SDK Auto-detection (Standard Vercel + Supabase environment variables)
 const SUPABASE_URL =
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -71,8 +111,12 @@ interface DeepLink {
     browserEscapes: number;
   };
 }
-// User-created links cache (No predefined sample links - only user-created links)
-const LINKS_CACHE: DeepLink[] = [];
+// User-created links cache (Persisted in globalThis across serverless warm invocations)
+const globalAny: any = globalThis;
+if (!globalAny.__DEEPDIRECT_LINKS__) {
+  globalAny.__DEEPDIRECT_LINKS__ = [];
+}
+const LINKS_CACHE: DeepLink[] = globalAny.__DEEPDIRECT_LINKS__;
 
 function detectPlatform(url: string): string {
   const clean = (url || '').toLowerCase();
@@ -283,8 +327,91 @@ async function ensureTableExists(): Promise<boolean> {
   }
 }
 
+let mysqlTableEnsured = false;
+async function ensureMySQLTableExists(): Promise<boolean> {
+  if (mysqlTableEnsured) return true;
+  if (!mysqlPool) return false;
+  try {
+    await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS deep_links (
+        id VARCHAR(64) PRIMARY KEY,
+        slug VARCHAR(128) UNIQUE NOT NULL,
+        original_url TEXT NOT NULL,
+        platform VARCHAR(32) NOT NULL DEFAULT 'generic',
+        target_mode VARCHAR(32) NOT NULL DEFAULT 'smart',
+        title VARCHAR(255) NOT NULL DEFAULT '',
+        folder VARCHAR(128) DEFAULT '',
+        project VARCHAR(128) DEFAULT '',
+        description TEXT DEFAULT '',
+        image_url TEXT DEFAULT '',
+        clicks INT DEFAULT 0,
+        stats JSON DEFAULT NULL,
+        data JSON DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    mysqlTableEnsured = true;
+    return true;
+  } catch (err) {
+    console.warn('ensureMySQLTableExists error:', err);
+    throw err;
+  }
+}
+
 async function getSupabaseLinks(): Promise<DeepLink[] | null> {
-  // 1. Try Direct PostgreSQL
+  // 1. Try Hostinger MySQL
+  if (mysqlPool) {
+    try {
+      await ensureMySQLTableExists();
+      const [rows]: any = await mysqlPool.query(
+        'SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 200'
+      );
+      if (Array.isArray(rows)) {
+        return rows.map((r: any) => {
+          let parsedStats = r.stats;
+          if (typeof parsedStats === 'string') {
+            try { parsedStats = JSON.parse(parsedStats); } catch {}
+          }
+          let parsedData = r.data;
+          if (typeof parsedData === 'string') {
+            try { parsedData = JSON.parse(parsedData); } catch {}
+          }
+          if (parsedData && typeof parsedData === 'object') {
+            return {
+              ...parsedData,
+              clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
+            };
+          }
+          return {
+            id: r.id || `link_${r.slug}`,
+            slug: r.slug,
+            originalUrl: r.original_url || r.originalUrl || '',
+            platform: r.platform || detectPlatform(r.original_url || ''),
+            targetMode: r.target_mode || 'smart',
+            title: r.title || 'Nuovo Deep Link',
+            folder: r.folder || r.project || '',
+            project: r.folder || r.project || '',
+            description: r.description || '',
+            imageUrl: r.image_url || '',
+            clicks: Number(r.clicks || 0),
+            stats: parsedStats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+          };
+        });
+      }
+    } catch (err) {
+      console.warn('Hostinger MySQL getLinks error:', err);
+    }
+  }
+
+  // 2. Try Direct PostgreSQL
   if (sqlClient) {
     try {
       await ensureTableExists();
@@ -374,7 +501,58 @@ async function getSupabaseLinks(): Promise<DeepLink[] | null> {
 async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
   const cleanSlug = slug.trim().toLowerCase();
 
-  // 1. Try Direct PostgreSQL
+  // 1. Try Hostinger MySQL
+  if (mysqlPool) {
+    try {
+      await ensureMySQLTableExists();
+      const [rows]: any = await mysqlPool.query(
+        'SELECT * FROM deep_links WHERE LOWER(slug) = ? LIMIT 1',
+        [cleanSlug]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        const r = rows[0];
+        let parsedStats = r.stats;
+        if (typeof parsedStats === 'string') {
+          try { parsedStats = JSON.parse(parsedStats); } catch {}
+        }
+        let parsedData = r.data;
+        if (typeof parsedData === 'string') {
+          try { parsedData = JSON.parse(parsedData); } catch {}
+        }
+        if (parsedData && typeof parsedData === 'object') {
+          return {
+            ...parsedData,
+            clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
+          };
+        }
+        return {
+          id: r.id || `link_${r.slug}`,
+          slug: r.slug,
+          originalUrl: r.original_url || r.originalUrl || '',
+          platform: r.platform || detectPlatform(r.original_url || ''),
+          targetMode: r.target_mode || 'smart',
+          title: r.title || 'Nuovo Deep Link',
+          folder: r.folder || r.project || '',
+          project: r.folder || r.project || '',
+          description: r.description || '',
+          imageUrl: r.image_url || '',
+          clicks: Number(r.clicks || 0),
+          stats: parsedStats || {
+            iosClicks: 0,
+            androidClicks: 0,
+            desktopClicks: 0,
+            inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+            appOpens: 0,
+            browserEscapes: 0,
+          },
+        };
+      }
+    } catch (err) {
+      console.warn('Hostinger MySQL lookup error:', err);
+    }
+  }
+
+  // 2. Try Direct PostgreSQL
   if (sqlClient) {
     try {
       await ensureTableExists();
@@ -467,7 +645,49 @@ async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
 async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
   let saved = false;
 
-  // 1. Save via Direct PostgreSQL (auto-creates table if needed)
+  // 1. Save via Hostinger MySQL
+  if (mysqlPool) {
+    try {
+      await ensureMySQLTableExists();
+      await mysqlPool.query(
+        `INSERT INTO deep_links (
+          id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          original_url = VALUES(original_url),
+          platform = VALUES(platform),
+          target_mode = VALUES(target_mode),
+          title = VALUES(title),
+          folder = VALUES(folder),
+          project = VALUES(project),
+          description = VALUES(description),
+          image_url = VALUES(image_url),
+          stats = VALUES(stats),
+          data = VALUES(data),
+          updated_at = CURRENT_TIMESTAMP`,
+        [
+          link.id,
+          link.slug.toLowerCase(),
+          link.originalUrl,
+          link.platform,
+          link.targetMode,
+          link.title,
+          link.folder || link.project || '',
+          link.folder || link.project || '',
+          link.description || '',
+          link.imageUrl || '',
+          link.clicks || 0,
+          JSON.stringify(link.stats || {}),
+          JSON.stringify(link),
+        ]
+      );
+      saved = true;
+    } catch (err) {
+      console.warn('Hostinger MySQL saveLink error:', err);
+    }
+  }
+
+  // 2. Save via Direct PostgreSQL (auto-creates table if needed)
   if (sqlClient) {
     try {
       await ensureTableExists();
@@ -506,7 +726,7 @@ async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
     }
   }
 
-  // 2. Save via Supabase REST SDK
+  // 3. Save via Supabase REST SDK
   if (supabase) {
     try {
       const { error } = await supabase.from('deep_links').upsert(
@@ -541,6 +761,13 @@ async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
 
 async function deleteSupabaseLink(idOrSlug: string): Promise<void> {
   const clean = idOrSlug.trim().toLowerCase();
+  if (mysqlPool) {
+    try {
+      await mysqlPool.query('DELETE FROM deep_links WHERE LOWER(slug) = ? OR id = ?', [clean, idOrSlug]);
+    } catch (err) {
+      console.warn('Hostinger MySQL delete error:', err);
+    }
+  }
   if (sqlClient) {
     try {
       await sqlClient`DELETE FROM public.deep_links WHERE LOWER(slug) = ${clean} OR id = ${idOrSlug};`;
@@ -565,17 +792,60 @@ export default async function handler(req: any, res: any) {
 
   const rawUrl = req.url || '';
   const query = req.query || {};
+  const apiRoute = (Array.isArray(query.apiRoute) ? query.apiRoute.join('/') : (query.apiRoute as string)) || '';
+  const xMatchedPath = (req.headers['x-matched-path'] as string) || '';
+  const xInvokePath = (req.headers['x-invoke-path'] as string) || '';
+  const requestPath = `${rawUrl} ${apiRoute} ${xMatchedPath} ${xInvokePath}`.toLowerCase();
+
+  // Route Flags
+  const isDatabaseStatus = requestPath.includes('database-status');
+  const isSync = requestPath.includes('sync') || (req.method === 'POST' && Array.isArray(req.body));
+  const isCreateLink = req.method === 'POST' && !isSync && (requestPath.includes('links') || (req.body && req.body.originalUrl));
+  const isDeleteLink = req.method === 'DELETE';
+  const isListLinks = req.method === 'GET' && !query.slug && !requestPath.includes('/l/') && (requestPath.includes('links') || rawUrl === '/api' || rawUrl === '/api/' || apiRoute === 'links');
 
   // Handle API route: GET /api/database-status
-  if (rawUrl.includes('/api/database-status')) {
+  if (isDatabaseStatus) {
     res.setHeader('Content-Type', 'application/json');
+
+    // Hostinger MySQL
+    if (mysqlPool) {
+      try {
+        const tableReady = await ensureMySQLTableExists();
+        return res.status(200).json({
+          hasDatabase: true,
+          hasMySQL: true,
+          hasSupabase: false,
+          hasPostgres: false,
+          hasKv: false,
+          tableReady,
+          message: tableReady
+            ? 'Database Hostinger MySQL connesso e tabella deep_links attiva! I link sono salvati in modo permanente.'
+            : 'Connessione a Hostinger MySQL stabilita. Configurazione tabella in corso...',
+        });
+      } catch (err: any) {
+        return res.status(200).json({
+          hasDatabase: true,
+          hasMySQL: true,
+          hasSupabase: false,
+          hasPostgres: false,
+          hasKv: false,
+          tableReady: false,
+          error: err.message,
+          message: 'Errore durante la connessione a Hostinger MySQL: verifica host, utente, password e di aver abilitato Remote MySQL su hPanel.',
+        });
+      }
+    }
+
     if (!sqlClient && !supabase) {
       return res.status(200).json({
+        hasDatabase: false,
+        hasMySQL: false,
         hasSupabase: false,
         hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
         tableReady: false,
-        message: 'Nessuna variabile POSTGRES_URL o SUPABASE_URL trovata nel deployment.',
+        message: 'Nessuna variabile per Hostinger MySQL (MYSQL_URL/MYSQL_HOST) o Supabase (POSTGRES_URL) configurata.',
       });
     }
 
@@ -584,6 +854,8 @@ export default async function handler(req: any, res: any) {
       try {
         const tableReady = await ensureTableExists();
         return res.status(200).json({
+          hasDatabase: true,
+          hasMySQL: false,
           hasSupabase: true,
           hasPostgres: true,
           hasKv: !!(KV_URL && KV_TOKEN),
@@ -601,6 +873,8 @@ export default async function handler(req: any, res: any) {
       const { data, error } = await supabase!.from('deep_links').select('slug').limit(1);
       if (error) {
         return res.status(200).json({
+          hasDatabase: true,
+          hasMySQL: false,
           hasSupabase: true,
           hasPostgres: false,
           hasKv: !!(KV_URL && KV_TOKEN),
@@ -611,6 +885,8 @@ export default async function handler(req: any, res: any) {
         });
       }
       return res.status(200).json({
+        hasDatabase: true,
+        hasMySQL: false,
         hasSupabase: true,
         hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
@@ -619,6 +895,8 @@ export default async function handler(req: any, res: any) {
       });
     } catch (err: any) {
       return res.status(200).json({
+        hasDatabase: true,
+        hasMySQL: false,
         hasSupabase: true,
         hasPostgres: false,
         hasKv: !!(KV_URL && KV_TOKEN),
@@ -628,21 +906,36 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  // Extract slug
-  let slug = (query.slug as string) || '';
-  if (!slug) {
-    const match = rawUrl.match(/\/l\/([a-zA-Z0-9_\-]+)/);
-    if (match) slug = match[1];
+  // Extract slug robustly
+  let rawSlug = '';
+  if (Array.isArray(query.slug)) {
+    rawSlug = query.slug.join('/');
+  } else if (typeof query.slug === 'string') {
+    rawSlug = query.slug;
+  }
+  if (!rawSlug) {
+    const match = rawUrl.match(/\/l\/([^\/?#]+)/i);
+    if (match) rawSlug = match[1];
+  }
+  let slug = rawSlug
+    .replace(/^\/?l\//i, '')
+    .replace(/^\/+/, '')
+    .split('?')[0]
+    .split('#')[0]
+    .trim();
+
+  if (['api', 'links', 'database-status', 'favicon.ico'].includes(slug.toLowerCase())) {
+    slug = '';
   }
 
   // Handle API route: GET /api/links
-  if (rawUrl.includes('/api/links') && req.method === 'GET') {
+  if (isListLinks) {
     res.setHeader('Content-Type', 'application/json');
 
     const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
 
-    // 1. Try PostgreSQL or Supabase
-    if (sqlClient || supabase) {
+    // 1. Try PostgreSQL, Supabase or Hostinger MySQL
+    if (sqlClient || supabase || mysqlPool) {
       const supaLinks = await getSupabaseLinks();
       if (supaLinks) {
         const cleanSupaLinks = supaLinks.filter(
@@ -670,8 +963,8 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json(LINKS_CACHE.filter((l) => !SAMPLE_SLUGS.has((l.slug || '').toLowerCase())));
   }
 
-  // Handle API route: POST /api/links/sync (Bulk sync from localStorage to Supabase)
-  if (rawUrl.includes('/api/links/sync') && req.method === 'POST') {
+  // Handle API route: POST /api/links/sync (Bulk sync from localStorage to Database)
+  if (isSync) {
     res.setHeader('Content-Type', 'application/json');
     const body = req.body || {};
     const linksToSync = Array.isArray(body) ? body : (body.links || []);
@@ -687,6 +980,8 @@ export default async function handler(req: any, res: any) {
         platform: item.platform || detectPlatform(item.originalUrl),
         targetMode: item.targetMode || 'smart',
         title: item.title || 'Deep Link',
+        folder: item.folder || item.project || '',
+        project: item.folder || item.project || '',
         description: item.description || '',
         imageUrl: item.imageUrl || '',
         clicks: Number(item.clicks || 0),
@@ -708,8 +1003,8 @@ export default async function handler(req: any, res: any) {
         LINKS_CACHE.unshift(norm);
       }
 
-      // Save to Supabase / PostgreSQL
-      if (sqlClient || supabase) {
+      // Save to Database (Hostinger MySQL, PostgreSQL, Supabase)
+      if (sqlClient || supabase || mysqlPool) {
         await saveSupabaseLink(norm);
       }
 
@@ -728,7 +1023,7 @@ export default async function handler(req: any, res: any) {
   }
 
   // Handle API route: POST /api/links
-  if (rawUrl.includes('/api/links') && req.method === 'POST') {
+  if (isCreateLink) {
     res.setHeader('Content-Type', 'application/json');
     const body = req.body || {};
     const originalUrl = body.originalUrl;
@@ -762,8 +1057,8 @@ export default async function handler(req: any, res: any) {
 
     LINKS_CACHE.unshift(newLink);
 
-    // Save to Supabase / PostgreSQL
-    if (sqlClient || supabase) {
+    // Save to Database (Hostinger MySQL, PostgreSQL, Supabase)
+    if (sqlClient || supabase || mysqlPool) {
       await saveSupabaseLink(newLink);
     }
 
@@ -786,9 +1081,12 @@ export default async function handler(req: any, res: any) {
   }
 
   // Handle API route: DELETE /api/links/:id
-  if (rawUrl.includes('/api/links') && req.method === 'DELETE') {
+  if (isDeleteLink) {
     res.setHeader('Content-Type', 'application/json');
-    const id = rawUrl.split('/api/links/')[1]?.split('?')[0];
+    const id =
+      (query.id as string) ||
+      (apiRoute.split('links/')[1] || rawUrl.split('/api/links/')[1])?.split('?')[0]?.replace(/^\//, '');
+
     if (id) {
       // Remove from memory
       const idx = LINKS_CACHE.findIndex((l) => l.id === id || l.slug === id);
@@ -805,8 +1103,8 @@ export default async function handler(req: any, res: any) {
         }
       }
 
-      // Remove from Supabase / PostgreSQL
-      if (sqlClient || supabase) {
+      // Remove from Database (Hostinger MySQL, PostgreSQL, Supabase)
+      if (sqlClient || supabase || mysqlPool) {
         await deleteSupabaseLink(id);
       }
     }
@@ -820,13 +1118,23 @@ export default async function handler(req: any, res: any) {
       (l) => l.slug.toLowerCase() === slug.toLowerCase()
     );
 
-    // 2. Look in Supabase / PostgreSQL database
-    if (!link && (sqlClient || supabase)) {
+    // 2. Look in Hostinger MySQL / Supabase / PostgreSQL database
+    if (!link && (sqlClient || supabase || mysqlPool)) {
       const supaLink = await getSupabaseLinkBySlug(slug);
       if (supaLink) {
         link = supaLink;
+        if (!LINKS_CACHE.some((l) => l.slug.toLowerCase() === supaLink.slug.toLowerCase())) {
+          LINKS_CACHE.unshift(supaLink);
+        }
         // Increment clicks asynchronously
-        if (sqlClient) {
+        if (mysqlPool) {
+          try {
+            mysqlPool.query(
+              'UPDATE deep_links SET clicks = clicks + 1, updated_at = CURRENT_TIMESTAMP WHERE LOWER(slug) = ?',
+              [slug.toLowerCase()]
+            ).then(() => {}, () => {});
+          } catch {}
+        } else if (sqlClient) {
           try {
             sqlClient`UPDATE public.deep_links SET clicks = clicks + 1, updated_at = NOW() WHERE LOWER(slug) = ${slug.toLowerCase()};`.then(() => {}, () => {});
           } catch {}

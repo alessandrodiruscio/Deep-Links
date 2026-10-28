@@ -75,6 +75,8 @@ export default function App() {
   const [simulatedLink, setSimulatedLink] = useState<DeepLink | null>(null);
   const [loading, setLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<{
+    hasDatabase?: boolean;
+    hasMySQL?: boolean;
     hasSupabase?: boolean;
     tableReady?: boolean;
     message?: string;
@@ -338,8 +340,8 @@ export default function App() {
 
       {/* Main Viewport Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Supabase Status Banner */}
-        {dbStatus?.hasSupabase && !dbStatus.tableReady && (
+        {/* Database Status Banner */}
+        {dbStatus?.hasSupabase && !dbStatus.tableReady && !dbStatus.hasMySQL && (
           <div className="mb-6 p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-lg">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
@@ -365,12 +367,15 @@ export default function App() {
           </div>
         )}
 
-        {dbStatus?.hasSupabase && dbStatus.tableReady && (
+        {dbStatus?.tableReady && (
           <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300 shadow-sm">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
               <span>
-                <strong>Database Supabase Connesso</strong>: I tuoi link e le statistiche sono memorizzati in modo permanente nel cloud!
+                <strong>
+                  {dbStatus.hasMySQL ? 'Database Hostinger MySQL Connesso' : 'Database Cloud Connesso'}
+                </strong>
+                : I tuoi link e le statistiche sono memorizzati in modo permanente nel database!
               </span>
             </div>
             <button
@@ -379,7 +384,7 @@ export default function App() {
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold rounded-lg border border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza Link nel Database'}</span>
+              <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza nel Database'}</span>
             </button>
           </div>
         )}
@@ -399,7 +404,6 @@ export default function App() {
             onDeleteLink={handleDeleteLink}
             onOpenQrModal={handleOpenQrModal}
             onOpenSimulator={handleOpenSimulator}
-            onQuickCreate={handleQuickCreate}
             onNavigateToDeploy={() => setCurrentTab('deploy')}
           />
         )}

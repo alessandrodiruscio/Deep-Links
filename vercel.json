@@ -3,8 +3,8 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/l/:path*", "destination": "/api?slug=:path*" },
-    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/l/:slug*", "destination": "/api?slug=:slug*" },
+    { "source": "/api/:match*", "destination": "/api?apiRoute=:match*" },
     { "source": "/((?!assets/|api/|l/|favicon|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

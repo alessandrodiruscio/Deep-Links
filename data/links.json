@@ -1,1 +1,92 @@
-[]
+[
+  {
+    "id": "link_1793199013605_wjb8",
+    "slug": "hostinger-test",
+    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "platform": "youtube",
+    "targetMode": "smart",
+    "title": "Test Hostinger Link",
+    "folder": "Test",
+    "project": "Test",
+    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "imageUrl": "",
+    "utm": {},
+    "createdAt": "2026-10-28T14:50:13.605Z",
+    "updatedAt": "2026-10-28T14:50:13.605Z",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793190734428_ug2p",
+    "slug": "test-curl",
+    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "platform": "youtube",
+    "targetMode": "smart",
+    "title": "Test Link",
+    "folder": "",
+    "project": "",
+    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "imageUrl": "",
+    "utm": {},
+    "createdAt": "2026-10-28T12:32:14.428Z",
+    "updatedAt": "2026-10-28T12:32:14.428Z",
+    "clicks": 2,
+    "stats": {
+      "iosClicks": 1,
+      "androidClicks": 0,
+      "desktopClicks": 1,
+      "inAppBreaks": {
+        "instagram": 1,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 2
+    }
+  },
+  {
+    "id": "link_1793119976032_ezs1",
+    "slug": "test-link",
+    "originalUrl": "https://google.com",
+    "platform": "generic",
+    "targetMode": "system_browser",
+    "title": "Google",
+    "folder": "",
+    "project": "",
+    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "imageUrl": "",
+    "utm": {},
+    "createdAt": "2026-10-27T16:52:56.032Z",
+    "updatedAt": "2026-10-27T16:52:56.032Z",
+    "clicks": 1,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 1,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 1
+    }
+  }
+]

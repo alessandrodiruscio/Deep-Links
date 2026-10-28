@@ -8,7 +8,6 @@ import {
   Trash2,
   Smartphone,
   Search,
-  Sparkles,
   ArrowUpRight,
   Filter,
   CheckCircle2,
@@ -27,7 +26,6 @@ interface LinksTableProps {
   onDeleteLink: (id: string) => void;
   onOpenQrModal: (link: DeepLink) => void;
   onOpenSimulator: (link: DeepLink) => void;
-  onQuickCreate: (url: string) => void;
   onNavigateToDeploy?: () => void;
 }
 
@@ -39,40 +37,34 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   onDeleteLink,
   onOpenQrModal,
   onOpenSimulator,
-  onQuickCreate,
   onNavigateToDeploy,
 }) => {
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [folderFilter, setFolderFilter] = useState<string>('all');
-  const [quickUrl, setQuickUrl] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const availableFolders = Array.from(
-    new Set(links.map((l) => l.folder || l.project).filter(Boolean) as string[])
-  );
-
-  const rawBaseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-  const effectiveBaseUrl = customBaseUrl || rawBaseUrl;
+  const effectiveBaseUrl =
+    customBaseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
 
   const getShareableUrl = (link: DeepLink) => {
     return `${effectiveBaseUrl}/l/${link.slug}`;
   };
 
   const handleCopy = (link: DeepLink) => {
-    const fullShortUrl = getShareableUrl(link);
-    navigator.clipboard.writeText(fullShortUrl);
+    const url = getShareableUrl(link);
+    navigator.clipboard.writeText(url);
     setCopiedId(link.id);
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleQuickSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (quickUrl.trim()) {
-      onQuickCreate(quickUrl.trim());
-      setQuickUrl('');
-    }
-  };
+  const availableFolders = Array.from(
+    new Set(
+      links
+        .map((l) => l.folder || l.project)
+        .filter((f): f is string => Boolean(f && f !== 'No project'))
+    )
+  );
 
   const filteredLinks = links.filter((l) => {
     const title = l?.title || '';
@@ -134,36 +126,6 @@ export const LinksTable: React.FC<LinksTableProps> = ({
             <span>Configura Dominio (0€)</span>
           </button>
         )}
-      </div>
-
-      {/* Quick Creator Box */}
-      <div className="p-6 bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-2xl shadow-xl">
-        <div className="max-w-3xl">
-          <h2 className="text-lg font-bold text-white mb-1.5 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-indigo-400" />
-            Crea Deep Link Istantaneo
-          </h2>
-          <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-            Incolla il link del tuo sito web, prodotto Amazon, video YouTube o traccia Spotify. Il motore
-            creerà immediatamente il link con bypass per Instagram, TikTok e Facebook.
-          </p>
-
-          <form onSubmit={handleQuickSubmit} className="flex flex-col sm:flex-row gap-2.5">
-            <input
-              type="text"
-              placeholder="Incolla qui il tuo link (es. https://miosito.it/landing o link Amazon)..."
-              value={quickUrl}
-              onChange={(e) => setQuickUrl(e.target.value)}
-              className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500 placeholder:text-slate-500"
-            />
-            <button
-              type="submit"
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors shadow-md whitespace-nowrap"
-            >
-              Genera Deep Link
-            </button>
-          </form>
-        </div>
       </div>
 
       {/* Filter and Search Bar */}
