@@ -1,145 +1,302 @@
-import React from 'react';
-import { ExternalLink, Link2, Plus, Sparkles, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link2, Plus, User, LogOut, Zap, Shield, ChevronDown } from 'lucide-react';
+import { UserProfile } from '../types/deepLink';
 
 interface HeaderProps {
-  currentTab: 'links' | 'simulator' | 'guide' | 'analytics' | 'deploy';
-  onTabChange: (tab: 'links' | 'simulator' | 'guide' | 'analytics' | 'deploy') => void;
+  currentTab: 'links' | 'analytics';
+  onTabChange: (tab: 'links' | 'analytics') => void;
   onOpenCreateModal: () => void;
+  currentUser: UserProfile | null;
+  onOpenAuth: () => void;
+  onOpenUpgrade: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentTab,
   onTabChange,
   onOpenCreateModal,
+  currentUser,
+  onOpenAuth,
+  onOpenUpgrade,
+  onLogout,
 }) => {
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
+  const isPro = currentUser?.plan === 'pro';
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleLogoClick = () => {
+    if (!currentUser) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      onTabChange('links');
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-16 gap-3">
           {/* Brand Zone */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div
+            onClick={handleLogoClick}
+            className="flex items-center gap-3 shrink-0 cursor-pointer"
+            title="Torna all'inizio"
+          >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold">
               <Link2 className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-lg font-bold tracking-tight text-white whitespace-nowrap">
-                DeepDirect
-              </span>
-              <span className="hidden sm:inline-block ml-2 text-xs text-indigo-400 font-medium">
-                Deep Link Engine
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold tracking-tight text-white whitespace-nowrap">
+                  DeepDirect
+                </span>
+                {currentUser && (
+                  <span
+                    className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                      isPro
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    {isPro ? '⭐ PRO' : `Free: ${currentUser.currentLinkCount || 0}/5`}
+                  </span>
+                )}
+              </div>
+              <span className="hidden sm:inline-block text-[11px] text-indigo-400 font-medium">
+                Deep Link Engine & Commercial SaaS
               </span>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 sm:gap-2">
-            <button
-              onClick={() => onTabChange('links')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                currentTab === 'links'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              I Tuoi Deep Link
-            </button>
-            <button
-              onClick={() => onTabChange('simulator')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                currentTab === 'simulator'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              Simulatore In-App
-            </button>
-            <button
-              onClick={() => onTabChange('deploy')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                currentTab === 'deploy'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              Dominio & Deploy (0€)
-            </button>
-            <button
-              onClick={() => onTabChange('analytics')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                currentTab === 'analytics'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              Statistiche & Click
-            </button>
-            <button
-              onClick={() => onTabChange('guide')}
-              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                currentTab === 'guide'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
-              }`}
-            >
-              Come Funziona (Guida)
-            </button>
-          </nav>
+          {/* Navigation Links: When LOGGED IN, show platform tabs */}
+          {currentUser ? (
+            <nav className="hidden sm:flex items-center gap-1">
+              <button
+                onClick={() => onTabChange('links')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                  currentTab === 'links'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                I Tuoi Deep Link
+              </button>
+              <button
+                onClick={() => onTabChange('analytics')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                  currentTab === 'analytics'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                Statistiche & Click
+              </button>
+            </nav>
+          ) : (
+            /* Navigation Links: When NOT logged in (Public Landing Page Anchor Links) */
+            <nav className="hidden md:flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => scrollToSection('come-funziona')}
+                className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+              >
+                Come Funziona
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('confronto')}
+                className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+              >
+                Prima vs Dopo
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('calcolatore')}
+                className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+              >
+                Calcolatore
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('prezzi')}
+                className="px-3 py-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <Zap className="w-3 h-3 fill-current" />
+                <span>Prezzi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection('faq')}
+                className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+              >
+                FAQ
+              </button>
+            </nav>
+          )}
 
-          {/* Primary Action */}
-          <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={onOpenCreateModal}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 active:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Nuovo Deep Link</span>
-            </button>
+          {/* Right actions */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            {/* Upgrade Button if not Pro */}
+            {!isPro && (
+              <button
+                onClick={onOpenUpgrade}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-sm shadow-emerald-400/20 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                <span>Passa a PRO</span>
+              </button>
+            )}
+
+            {/* Create Link Button: ONLY when logged in */}
+            {currentUser && (
+              <button
+                onClick={onOpenCreateModal}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 active:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuovo Deep Link</span>
+              </button>
+            )}
+
+            {/* User Profile / Auth Area */}
+            {currentUser ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs transition-colors cursor-pointer"
+                >
+                  <div className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold">
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="hidden md:inline-block max-w-[100px] truncate font-medium">
+                    {currentUser.name || currentUser.email.split('@')[0]}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                </button>
+
+                {userDropdownOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-xl py-2 z-50 text-xs"
+                    onClick={() => setUserDropdownOpen(false)}
+                  >
+                    <div className="px-3 py-2 border-b border-slate-800">
+                      <div className="font-semibold text-white truncate">{currentUser.name || 'Utente'}</div>
+                      <div className="text-slate-400 truncate">{currentUser.email}</div>
+                      <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-400">
+                        <Shield className="w-3 h-3" />
+                        <span>Piano: {isPro ? 'PRO (Illimitato)' : `Free (${currentUser.currentLinkCount || 0}/5)`}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={onOpenUpgrade}
+                      className="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{isPro ? 'Dettagli Piano PRO' : 'Passa a PRO (SamCart)'}</span>
+                    </button>
+
+                    <button
+                      onClick={onLogout}
+                      className="w-full text-left px-3 py-2 text-red-400 hover:bg-slate-800 flex items-center gap-2 border-t border-slate-800/80 mt-1 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Esci dall'account</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Accedi alla Piattaforma</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Mobile Navigation bar */}
-        <div className="flex md:hidden overflow-x-auto py-2 gap-2 border-t border-slate-800/60 no-scrollbar">
-          <button
-            onClick={() => onTabChange('links')}
-            className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-              currentTab === 'links' ? 'bg-slate-800 text-white' : 'text-slate-400'
-            }`}
-          >
-            I Tuoi Link
-          </button>
-          <button
-            onClick={() => onTabChange('simulator')}
-            className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-              currentTab === 'simulator' ? 'bg-slate-800 text-white' : 'text-slate-400'
-            }`}
-          >
-            Simulatore
-          </button>
-          <button
-            onClick={() => onTabChange('deploy')}
-            className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-              currentTab === 'deploy' ? 'bg-slate-800 text-white' : 'text-slate-400'
-            }`}
-          >
-            Dominio & Deploy
-          </button>
-          <button
-            onClick={() => onTabChange('analytics')}
-            className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-              currentTab === 'analytics' ? 'bg-slate-800 text-white' : 'text-slate-400'
-            }`}
-          >
-            Statistiche
-          </button>
-          <button
-            onClick={() => onTabChange('guide')}
-            className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap ${
-              currentTab === 'guide' ? 'bg-slate-800 text-white' : 'text-slate-400'
-            }`}
-          >
-            Guida
-          </button>
-        </div>
+        {/* Mobile Navigation bar: When logged in, show platform tabs */}
+        {currentUser && (
+          <div className="flex sm:hidden overflow-x-auto py-2 gap-2 border-t border-slate-800/60 no-scrollbar items-center">
+            <button
+              onClick={() => onTabChange('links')}
+              className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+                currentTab === 'links' ? 'bg-slate-800 text-white' : 'text-slate-400'
+              }`}
+            >
+              I Tuoi Link
+            </button>
+            <button
+              onClick={() => onTabChange('analytics')}
+              className={`px-3 py-1 text-xs font-medium rounded-md whitespace-nowrap cursor-pointer ${
+                currentTab === 'analytics' ? 'bg-slate-800 text-white' : 'text-slate-400'
+              }`}
+            >
+              Statistiche
+            </button>
+            {!isPro && (
+              <button
+                onClick={onOpenUpgrade}
+                className="px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-500 text-slate-950 whitespace-nowrap ml-auto cursor-pointer"
+              >
+                ⚡ PRO
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Mobile Navigation bar: When NOT logged in (Public Landing Page Anchor Links) */}
+        {!currentUser && (
+          <div className="flex md:hidden overflow-x-auto py-2 gap-2 border-t border-slate-800/60 no-scrollbar items-center text-xs">
+            <button
+              type="button"
+              onClick={() => scrollToSection('come-funziona')}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-400 hover:text-white bg-slate-900/60 shrink-0 cursor-pointer"
+            >
+              Come Funziona
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('confronto')}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-400 hover:text-white bg-slate-900/60 shrink-0 cursor-pointer"
+            >
+              Confronto
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('calcolatore')}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-400 hover:text-white bg-slate-900/60 shrink-0 cursor-pointer"
+            >
+              Calcolatore
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('prezzi')}
+              className="px-2.5 py-1 text-[11px] font-bold rounded-md text-emerald-400 hover:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 shrink-0 cursor-pointer flex items-center gap-1"
+            >
+              <Zap className="w-2.5 h-2.5 fill-current" />
+              <span>Prezzi</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection('faq')}
+              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-400 hover:text-white bg-slate-900/60 shrink-0 cursor-pointer"
+            >
+              FAQ
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -25,8 +25,6 @@ interface LinksTableProps {
   onEditLink: (link: DeepLink) => void;
   onDeleteLink: (id: string) => void;
   onOpenQrModal: (link: DeepLink) => void;
-  onOpenSimulator: (link: DeepLink) => void;
-  onNavigateToDeploy?: () => void;
 }
 
 export const LinksTable: React.FC<LinksTableProps> = ({
@@ -36,8 +34,6 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   onEditLink,
   onDeleteLink,
   onOpenQrModal,
-  onOpenSimulator,
-  onNavigateToDeploy,
 }) => {
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -102,31 +98,6 @@ export const LinksTable: React.FC<LinksTableProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Notice about Testing on Instagram & ais-dev security cookie */}
-      <div className="p-4 bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold text-amber-300">
-              Hai visto l'avviso "Action required to load your app" su Instagram?
-            </span>
-            <p className="text-slate-300 mt-0.5 leading-relaxed">
-              È normale: l'URL temporaneo <code className="text-amber-200 font-mono">ais-dev-...</code> richiede
-              il login Google per sicurezza dello sviluppo. Per i link pubblici nella tua bio Instagram, usa un tuo
-              dominio (es. <code className="text-indigo-300 font-mono">link.tuosito.it</code>) senza alcun blocco!
-            </p>
-          </div>
-        </div>
-        {onNavigateToDeploy && (
-          <button
-            onClick={onNavigateToDeploy}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg whitespace-nowrap font-medium transition-colors shrink-0"
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Configura Dominio (0€)</span>
-          </button>
-        )}
-      </div>
 
       {/* Filter and Search Bar */}
       <div className="space-y-3">
@@ -322,14 +293,6 @@ export const LinksTable: React.FC<LinksTableProps> = ({
 
                   {/* Right: Actions */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => onOpenSimulator(link)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-                      title="Testa nel simulatore in-app"
-                    >
-                      <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>Simula</span>
-                    </button>
 
                     <button
                       onClick={() => onOpenQrModal(link)}

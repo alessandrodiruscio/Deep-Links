@@ -43,10 +43,24 @@ export interface DeepLink {
     medium?: string;
     campaign?: string;
   };
+  userId?: string;
   createdAt: string;
   updatedAt: string;
   clicks: number;
   stats: DeepLinkStats;
+}
+
+export type UserPlan = 'free' | 'pro';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  plan: UserPlan;
+  status: 'active' | 'canceled' | 'past_due';
+  maxLinks: number;
+  currentLinkCount?: number;
+  createdAt?: string;
 }
 
 export interface DeepLinkProtocols {

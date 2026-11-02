@@ -256,11 +256,64 @@ CREATE POLICY "Public access to deep_links" ON public.deep_links FOR ALL USING (
         </p>
       </div>
 
-      {/* Step 4: Zero maintenance workflow */}
+      {/* Step 4: SamCart Webhook Integration for Commercialization */}
+      <div className="p-6 bg-slate-900 border border-emerald-500/30 rounded-2xl space-y-4 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-white font-bold text-sm">
+            <Sparkles className="w-5 h-5 text-emerald-400" />
+            <span>Passo 4: Integrazione SamCart Webhook (Sblocco PRO Automatico)</span>
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-semibold">
+            Commerciale
+          </span>
+        </div>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Puoi vendere abbonamenti o accessi PRO a DeepDirect su SamCart. Quando un cliente effettua il checkout,
+          SamCart invia un webhook che <strong>crea o promuove istantaneamente l'utente a PRO</strong> con link illimitati!
+        </p>
+
+        <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-3">
+          <div className="text-xs font-semibold text-slate-200">
+            1. Nel tuo account SamCart vai su: <span className="text-emerald-400">Settings → Integrations → Webhooks</span>
+          </div>
+          <div className="text-xs text-slate-400">
+            2. Clicca su <strong>Add Webhook</strong> e incolla questo URL endpoint:
+          </div>
+
+          <div className="flex items-center gap-2 bg-slate-900 p-2.5 rounded-xl border border-slate-700">
+            <code className="text-xs font-mono text-emerald-400 flex-1 truncate">
+              {(customBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://iltuodominio.it')) + '/api/webhooks/samcart'}
+            </code>
+            <button
+              type="button"
+              onClick={() => handleCopy((customBaseUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://iltuodominio.it')) + '/api/webhooks/samcart', 'samcart-wh')}
+              className="p-1.5 hover:text-white text-slate-400 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1 text-xs shrink-0"
+            >
+              {copiedField === 'samcart-wh' ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-medium">Copiato!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copia URL</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="text-[11px] text-slate-400">
+            3. Seleziona gli eventi: <strong>Order Created</strong> (per sbloccare PRO) e facoltativamente <strong>Subscription Canceled / Refund</strong> (per riportare al piano Free).
+          </div>
+        </div>
+      </div>
+
+      {/* Step 5: Zero maintenance workflow */}
       <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
         <div className="flex items-center gap-2 text-white font-bold text-sm">
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
-          <span>Passo 4: Flusso Quotidiano (Zero Manutenzione)</span>
+          <span>Passo 5: Flusso Quotidiano (Zero Manutenzione)</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">

@@ -2,6 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'deepdirect_jwt_secret_9482f7192a01';
+let samcartCheckoutUrl = process.env.SAMCART_CHECKOUT_URL || 'https://checkout.samcart.com/products/deepdirect-pro';
 
 // 1. Direct PostgreSQL Auto-Detection (Injected automatically by Vercel Marketplace Supabase)
 const POSTGRES_URL =
@@ -95,6 +100,7 @@ interface DeepLink {
   project?: string;
   description: string;
   imageUrl?: string;
+  userId?: string;
   clicks: number;
   stats: {
     iosClicks: number;
@@ -344,6 +350,7 @@ async function ensureMySQLTableExists(): Promise<boolean> {
         project VARCHAR(128) DEFAULT '',
         description TEXT DEFAULT '',
         image_url TEXT DEFAULT '',
+        user_id VARCHAR(64) DEFAULT '',
         clicks INT DEFAULT 0,
         stats JSON DEFAULT NULL,
         data JSON DEFAULT NULL,
@@ -351,6 +358,31 @@ async function ensureMySQLTableExists(): Promise<boolean> {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure users table exists
+    await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(64) PRIMARY KEY,
+        email VARCHAR(191) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        name VARCHAR(128) DEFAULT '',
+        plan VARCHAR(32) NOT NULL DEFAULT 'free',
+        status VARCHAR(32) NOT NULL DEFAULT 'active',
+        max_links INT NOT NULL DEFAULT 5,
+        samcart_order_id VARCHAR(128) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure user_id column exists in deep_links
+    try {
+      const [cols]: any = await mysqlPool.query("SHOW COLUMNS FROM deep_links LIKE 'user_id';");
+      if (!Array.isArray(cols) || cols.length === 0) {
+        await mysqlPool.query("ALTER TABLE deep_links ADD COLUMN user_id VARCHAR(64) DEFAULT '';");
+      }
+    } catch {}
+
     mysqlTableEnsured = true;
     return true;
   } catch (err) {
@@ -359,14 +391,53 @@ async function ensureMySQLTableExists(): Promise<boolean> {
   }
 }
 
-async function getSupabaseLinks(): Promise<DeepLink[] | null> {
+async function getAuthUser(req: any): Promise<any | null> {
+  const authHeader = req.headers?.authorization || req.headers?.Authorization;
+  if (!authHeader || typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.split(' ')[1];
+  if (!token) return null;
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    if (!decoded || !decoded.userId) return null;
+
+    if (mysqlPool) {
+      await ensureMySQLTableExists();
+      const [rows]: any = await mysqlPool.query(
+        'SELECT id, email, name, plan, status, max_links, created_at FROM users WHERE id = ? LIMIT 1',
+        [decoded.userId]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0];
+      }
+    }
+    return {
+      id: decoded.userId,
+      email: decoded.email,
+      name: decoded.name || '',
+      plan: decoded.plan || 'free',
+      status: 'active',
+      max_links: decoded.plan === 'pro' ? 999999 : 5,
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+async function getSupabaseLinks(userId?: string): Promise<DeepLink[] | null> {
   // 1. Try Hostinger MySQL
   if (mysqlPool) {
     try {
       await ensureMySQLTableExists();
-      const [rows]: any = await mysqlPool.query(
-        'SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 200'
-      );
+      let queryStr = 'SELECT * FROM deep_links';
+      const params: any[] = [];
+      if (userId) {
+        queryStr += ' WHERE user_id = ?';
+        params.push(userId);
+      }
+      queryStr += ' ORDER BY created_at DESC LIMIT 200';
+      const [rows]: any = await mysqlPool.query(queryStr, params);
       if (Array.isArray(rows)) {
         return rows.map((r: any) => {
           let parsedStats = r.stats;
@@ -380,6 +451,7 @@ async function getSupabaseLinks(): Promise<DeepLink[] | null> {
           if (parsedData && typeof parsedData === 'object') {
             return {
               ...parsedData,
+              userId: r.user_id || parsedData.userId || '',
               clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
             };
           }
@@ -394,6 +466,7 @@ async function getSupabaseLinks(): Promise<DeepLink[] | null> {
             project: r.folder || r.project || '',
             description: r.description || '',
             imageUrl: r.image_url || '',
+            userId: r.user_id || '',
             clicks: Number(r.clicks || 0),
             stats: parsedStats || {
               iosClicks: 0,
@@ -651,8 +724,8 @@ async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
       await ensureMySQLTableExists();
       await mysqlPool.query(
         `INSERT INTO deep_links (
-          id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, user_id, clicks, stats, data
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           original_url = VALUES(original_url),
           platform = VALUES(platform),
@@ -662,6 +735,7 @@ async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
           project = VALUES(project),
           description = VALUES(description),
           image_url = VALUES(image_url),
+          user_id = VALUES(user_id),
           stats = VALUES(stats),
           data = VALUES(data),
           updated_at = CURRENT_TIMESTAMP`,
@@ -676,6 +750,7 @@ async function saveSupabaseLink(link: DeepLink): Promise<boolean> {
           link.folder || link.project || '',
           link.description || '',
           link.imageUrl || '',
+          link.userId || '',
           link.clicks || 0,
           JSON.stringify(link.stats || {}),
           JSON.stringify(link),
@@ -784,7 +859,7 @@ export default async function handler(req: any, res: any) {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -799,10 +874,15 @@ export default async function handler(req: any, res: any) {
 
   // Route Flags
   const isDatabaseStatus = requestPath.includes('database-status');
+  const isAuthMe = requestPath.includes('auth/me');
+  const isAuthLogin = requestPath.includes('auth/login') && req.method === 'POST';
+  const isAuthRegister = requestPath.includes('auth/register') && req.method === 'POST';
+  const isSamcartWebhook = (requestPath.includes('webhooks/samcart') || requestPath.includes('samcart-webhook')) && req.method === 'POST';
+  const isSamcartConfig = requestPath.includes('samcart-config');
   const isSync = requestPath.includes('sync') || (req.method === 'POST' && Array.isArray(req.body));
-  const isCreateLink = req.method === 'POST' && !isSync && (requestPath.includes('links') || (req.body && req.body.originalUrl));
+  const isCreateLink = req.method === 'POST' && !isSync && !isAuthLogin && !isAuthRegister && !isSamcartWebhook && !isSamcartConfig && (requestPath.includes('links') || (req.body && req.body.originalUrl));
   const isDeleteLink = req.method === 'DELETE';
-  const isListLinks = req.method === 'GET' && !query.slug && !requestPath.includes('/l/') && (requestPath.includes('links') || rawUrl === '/api' || rawUrl === '/api/' || apiRoute === 'links');
+  const isListLinks = req.method === 'GET' && !query.slug && !requestPath.includes('/l/') && !isAuthMe && !isSamcartConfig && !isDatabaseStatus && (requestPath.includes('links') || rawUrl === '/api' || rawUrl === '/api/' || apiRoute === 'links');
 
   // Handle API route: GET /api/database-status
   if (isDatabaseStatus) {
@@ -906,6 +986,258 @@ export default async function handler(req: any, res: any) {
     }
   }
 
+  // Handle API route: POST /api/auth/register
+  if (isAuthRegister) {
+    res.setHeader('Content-Type', 'application/json');
+    const { email, password, name } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e password sono obbligatori' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La password deve contenere almeno 6 caratteri' });
+    }
+
+    try {
+      if (mysqlPool) {
+        await ensureMySQLTableExists();
+        const [existing]: any = await mysqlPool.query(
+          'SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1',
+          [cleanEmail]
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(400).json({ error: 'Un account con questa email esiste già. Effettua il login.' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const isOwner = cleanEmail === 'alessandro.diruscio@gmail.com';
+        const plan = isOwner ? 'pro' : 'free';
+        const maxLinks = isOwner ? 999999 : 5;
+
+        await mysqlPool.query(
+          'INSERT INTO users (id, email, password_hash, name, plan, status, max_links) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [newUserId, cleanEmail, passwordHash, name || cleanEmail.split('@')[0], plan, 'active', maxLinks]
+        );
+
+        const token = jwt.sign(
+          { userId: newUserId, email: cleanEmail, plan, name: name || cleanEmail.split('@')[0] },
+          JWT_SECRET,
+          { expiresIn: '30d' }
+        );
+
+        return res.status(201).json({
+          token,
+          user: {
+            id: newUserId,
+            email: cleanEmail,
+            name: name || cleanEmail.split('@')[0],
+            plan,
+            status: 'active',
+            maxLinks,
+            currentLinkCount: 0,
+          },
+        });
+      }
+
+      const token = jwt.sign({ userId: 'usr_local', email: cleanEmail, plan: 'free' }, JWT_SECRET, {
+        expiresIn: '30d',
+      });
+      return res.status(201).json({
+        token,
+        user: { id: 'usr_local', email: cleanEmail, name: name || '', plan: 'free', status: 'active', maxLinks: 5, currentLinkCount: 0 },
+      });
+    } catch (err: any) {
+      console.error('Registration error in api/index.ts:', err);
+      return res.status(500).json({ error: err.message || 'Errore durante la registrazione' });
+    }
+  }
+
+  // Handle API route: POST /api/auth/login
+  if (isAuthLogin) {
+    res.setHeader('Content-Type', 'application/json');
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e password sono obbligatori' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    try {
+      if (mysqlPool) {
+        await ensureMySQLTableExists();
+        const [rows]: any = await mysqlPool.query(
+          'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+          [cleanEmail]
+        );
+        if (!Array.isArray(rows) || rows.length === 0) {
+          return res.status(401).json({ error: 'Credenziali non valide. Verifica email e password.' });
+        }
+        const user = rows[0];
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (!match) {
+          return res.status(401).json({ error: 'Credenziali non valide. Verifica email e password.' });
+        }
+
+        const [countRes]: any = await mysqlPool.query(
+          'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+          [user.id]
+        );
+        const currentLinkCount = countRes[0]?.count || 0;
+
+        const token = jwt.sign(
+          { userId: user.id, email: user.email, plan: user.plan, name: user.name },
+          JWT_SECRET,
+          { expiresIn: '30d' }
+        );
+
+        return res.json({
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            plan: user.plan,
+            status: user.status,
+            maxLinks: Number(user.max_links || 5),
+            currentLinkCount,
+          },
+        });
+      }
+
+      const token = jwt.sign({ userId: 'usr_local', email: cleanEmail, plan: 'pro' }, JWT_SECRET, {
+        expiresIn: '30d',
+      });
+      return res.json({
+        token,
+        user: { id: 'usr_local', email: cleanEmail, name: 'Alessandro', plan: 'pro', status: 'active', maxLinks: 999999, currentLinkCount: 0 },
+      });
+    } catch (err: any) {
+      console.error('Login error in api/index.ts:', err);
+      return res.status(500).json({ error: err.message || 'Errore durante il login' });
+    }
+  }
+
+  // Handle API route: GET /api/auth/me
+  if (isAuthMe) {
+    res.setHeader('Content-Type', 'application/json');
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Non autenticato' });
+    }
+
+    let currentLinkCount = 0;
+    if (mysqlPool) {
+      try {
+        const [countRes]: any = await mysqlPool.query(
+          'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+          [authUser.id]
+        );
+        currentLinkCount = countRes[0]?.count || 0;
+      } catch {}
+    }
+
+    return res.json({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.name,
+      plan: authUser.plan,
+      status: authUser.status,
+      maxLinks: Number(authUser.max_links || 5),
+      currentLinkCount,
+    });
+  }
+
+  // Handle API route: GET/POST /api/samcart-config
+  if (isSamcartConfig) {
+    res.setHeader('Content-Type', 'application/json');
+    if (req.method === 'POST') {
+      const { checkoutUrl } = req.body || {};
+      if (checkoutUrl && typeof checkoutUrl === 'string') {
+        samcartCheckoutUrl = checkoutUrl.trim();
+      }
+      return res.json({ success: true, checkoutUrl: samcartCheckoutUrl });
+    }
+    return res.json({ checkoutUrl: samcartCheckoutUrl });
+  }
+
+  // Handle API route: POST /api/webhooks/samcart
+  if (isSamcartWebhook) {
+    res.setHeader('Content-Type', 'application/json');
+    const payload = req.body || {};
+    const eventType = (payload.type || payload.event || payload.action || 'order.created').toLowerCase();
+
+    const customerEmail = (
+      payload.customer?.email ||
+      payload.order?.customer_email ||
+      payload.email ||
+      payload.customer_email ||
+      payload.data?.customer?.email ||
+      ''
+    ).trim().toLowerCase();
+
+    const customerName = (
+      payload.customer?.first_name ||
+      payload.order?.first_name ||
+      payload.first_name ||
+      'Cliente SamCart'
+    ).trim();
+
+    const orderId = String(payload.order?.id || payload.order_id || payload.id || `sc_${Date.now()}`);
+
+    if (!customerEmail) {
+      return res.status(400).json({ error: 'Missing customer email in webhook payload' });
+    }
+
+    try {
+      if (mysqlPool) {
+        await ensureMySQLTableExists();
+
+        const isCancelOrRefund =
+          eventType.includes('cancel') ||
+          eventType.includes('refund') ||
+          eventType.includes('delinquent') ||
+          eventType.includes('failed');
+
+        const [existing]: any = await mysqlPool.query(
+          'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+          [customerEmail]
+        );
+
+        if (Array.isArray(existing) && existing.length > 0) {
+          if (isCancelOrRefund) {
+            await mysqlPool.query(
+              'UPDATE users SET plan = "free", status = "canceled", max_links = 5, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?',
+              [customerEmail]
+            );
+          } else {
+            await mysqlPool.query(
+              'UPDATE users SET plan = "pro", status = "active", max_links = 999999, samcart_order_id = ?, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?',
+              [orderId, customerEmail]
+            );
+          }
+        } else {
+          const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+          const defaultPassword = `Pro${Math.random().toString(36).substring(2, 8)}!`;
+          const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+          const plan = isCancelOrRefund ? 'free' : 'pro';
+          const maxLinks = isCancelOrRefund ? 5 : 999999;
+          const status = isCancelOrRefund ? 'canceled' : 'active';
+
+          await mysqlPool.query(
+            'INSERT INTO users (id, email, password_hash, name, plan, status, max_links, samcart_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [newUserId, customerEmail, passwordHash, customerName, plan, status, maxLinks, orderId]
+          );
+        }
+      }
+
+      return res.status(200).json({ success: true, received: true, email: customerEmail });
+    } catch (err: any) {
+      console.error('SamCart webhook processing error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
   // Extract slug robustly
   let rawSlug = '';
   if (Array.isArray(query.slug)) {
@@ -924,7 +1256,7 @@ export default async function handler(req: any, res: any) {
     .split('#')[0]
     .trim();
 
-  if (['api', 'links', 'database-status', 'favicon.ico'].includes(slug.toLowerCase())) {
+  if (['api', 'links', 'database-status', 'auth', 'samcart-config', 'webhooks', 'favicon.ico'].includes(slug.toLowerCase())) {
     slug = '';
   }
 
@@ -932,11 +1264,14 @@ export default async function handler(req: any, res: any) {
   if (isListLinks) {
     res.setHeader('Content-Type', 'application/json');
 
+    const authUser = await getAuthUser(req);
+    const userIdFilter = authUser && authUser.email !== 'alessandro.diruscio@gmail.com' ? authUser.id : undefined;
+
     const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
 
     // 1. Try PostgreSQL, Supabase or Hostinger MySQL
     if (sqlClient || supabase || mysqlPool) {
-      const supaLinks = await getSupabaseLinks();
+      const supaLinks = await getSupabaseLinks(userIdFilter);
       if (supaLinks) {
         const cleanSupaLinks = supaLinks.filter(
           (l) => !SAMPLE_SLUGS.has((l.slug || '').toLowerCase())
@@ -1031,6 +1366,28 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'URL mancante' });
     }
 
+    const authUser = await getAuthUser(req);
+    if (authUser && authUser.plan === 'free') {
+      let count = 0;
+      if (mysqlPool) {
+        try {
+          const [c]: any = await mysqlPool.query(
+            'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+            [authUser.id]
+          );
+          count = c[0]?.count || 0;
+        } catch {}
+      }
+      if (count >= authUser.max_links) {
+        return res.status(403).json({
+          error: `Hai raggiunto il limite di ${authUser.max_links} link del piano Free. Passa a PRO per creare link illimitati!`,
+          upgradeRequired: true,
+          limit: authUser.max_links,
+          current: count,
+        });
+      }
+    }
+
     const platform = detectPlatform(originalUrl);
     let finalSlug = body.slug || Math.random().toString(36).substring(2, 8);
 
@@ -1044,6 +1401,8 @@ export default async function handler(req: any, res: any) {
       folder: body.folder || body.project || '',
       project: body.folder || body.project || '',
       description: body.description || '',
+      imageUrl: body.imageUrl || '',
+      userId: authUser ? authUser.id : (body.userId || ''),
       clicks: 0,
       stats: {
         iosClicks: 0,

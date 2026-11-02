@@ -7,9 +7,14 @@ import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import postgres from 'postgres';
 import mysql from 'mysql2/promise';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { applyUtm, detectPlatform, generateProtocols, slugify } from './src/lib/deepLinkEngine';
 import { INITIAL_SAMPLE_LINKS } from './src/lib/sampleLinks';
 import { DeepLink } from './src/types/deepLink';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'deepdirect_jwt_secret_9482f7192a01';
+let samcartCheckoutUrl = process.env.SAMCART_CHECKOUT_URL || 'https://checkout.samcart.com/products/deepdirect-pro';
 
 // 1. Direct PostgreSQL Auto-Detection (Injected by Vercel Marketplace Supabase)
 const POSTGRES_URL =
@@ -89,6 +94,7 @@ async function ensureMySQLTableExists(): Promise<boolean> {
         project VARCHAR(128) DEFAULT '',
         description TEXT DEFAULT '',
         image_url TEXT DEFAULT '',
+        user_id VARCHAR(64) DEFAULT '',
         clicks INT DEFAULT 0,
         stats JSON DEFAULT NULL,
         data JSON DEFAULT NULL,
@@ -96,11 +102,70 @@ async function ensureMySQLTableExists(): Promise<boolean> {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // Ensure users table exists
+    await mysqlPool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(64) PRIMARY KEY,
+        email VARCHAR(191) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        name VARCHAR(128) DEFAULT '',
+        plan VARCHAR(32) NOT NULL DEFAULT 'free',
+        status VARCHAR(32) NOT NULL DEFAULT 'active',
+        max_links INT NOT NULL DEFAULT 5,
+        samcart_order_id VARCHAR(128) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // Ensure user_id column exists in deep_links
+    try {
+      const [cols]: any = await mysqlPool.query("SHOW COLUMNS FROM deep_links LIKE 'user_id';");
+      if (!Array.isArray(cols) || cols.length === 0) {
+        await mysqlPool.query("ALTER TABLE deep_links ADD COLUMN user_id VARCHAR(64) DEFAULT '';");
+      }
+    } catch {}
+
     mysqlTableEnsured = true;
     return true;
   } catch (err) {
     console.warn('ensureMySQLTableExists in server.ts error:', err);
     throw err;
+  }
+}
+
+async function getAuthUser(req: Request): Promise<any | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.split(' ')[1];
+  if (!token) return null;
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    if (!decoded || !decoded.userId) return null;
+
+    if (mysqlPool) {
+      await ensureMySQLTableExists();
+      const [rows]: any = await mysqlPool.query(
+        'SELECT id, email, name, plan, status, max_links, created_at FROM users WHERE id = ? LIMIT 1',
+        [decoded.userId]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0];
+      }
+    }
+    return {
+      id: decoded.userId,
+      email: decoded.email,
+      name: decoded.name || '',
+      plan: decoded.plan || 'free',
+      status: 'active',
+      max_links: decoded.plan === 'pro' ? 999999 : 5,
+    };
+  } catch (err) {
+    return null;
   }
 }
 
@@ -304,12 +369,297 @@ async function startServer() {
     }
   });
 
-  // List all deep links (User-created only)
+  // -------------------------------------------------------------
+  // AUTHENTICATION ENDPOINTS
+  // -------------------------------------------------------------
+
+  // Register new user (default to free plan, max 5 links)
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
+    const { email, password, name } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e password sono obbligatori' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La password deve contenere almeno 6 caratteri' });
+    }
+
+    try {
+      if (mysqlPool) {
+        await ensureMySQLTableExists();
+        const [existing]: any = await mysqlPool.query(
+          'SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1',
+          [cleanEmail]
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(400).json({ error: 'Un account con questa email esiste già. Effettua il login.' });
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+        const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        // Check if admin email
+        const isOwner = cleanEmail === 'alessandro.diruscio@gmail.com';
+        const plan = isOwner ? 'pro' : 'free';
+        const maxLinks = isOwner ? 999999 : 5;
+
+        await mysqlPool.query(
+          'INSERT INTO users (id, email, password_hash, name, plan, status, max_links) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [newUserId, cleanEmail, passwordHash, name || cleanEmail.split('@')[0], plan, 'active', maxLinks]
+        );
+
+        const token = jwt.sign(
+          { userId: newUserId, email: cleanEmail, plan, name: name || cleanEmail.split('@')[0] },
+          JWT_SECRET,
+          { expiresIn: '30d' }
+        );
+
+        return res.status(201).json({
+          token,
+          user: {
+            id: newUserId,
+            email: cleanEmail,
+            name: name || cleanEmail.split('@')[0],
+            plan,
+            status: 'active',
+            maxLinks,
+            currentLinkCount: 0,
+          },
+        });
+      }
+
+      // Memory fallback if no MySQL
+      const token = jwt.sign({ userId: 'usr_local', email: cleanEmail, plan: 'free' }, JWT_SECRET, {
+        expiresIn: '30d',
+      });
+      return res.status(201).json({
+        token,
+        user: { id: 'usr_local', email: cleanEmail, name: name || '', plan: 'free', status: 'active', maxLinks: 5 },
+      });
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      return res.status(500).json({ error: err.message || 'Errore durante la registrazione' });
+    }
+  });
+
+  // Login
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e password sono obbligatori' });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    try {
+      if (mysqlPool) {
+        await ensureMySQLTableExists();
+        const [rows]: any = await mysqlPool.query(
+          'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+          [cleanEmail]
+        );
+        if (!Array.isArray(rows) || rows.length === 0) {
+          return res.status(401).json({ error: 'Credenziali non valide. Verifica email e password.' });
+        }
+        const user = rows[0];
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (!match) {
+          return res.status(401).json({ error: 'Credenziali non valide. Verifica email e password.' });
+        }
+
+        // Count user links
+        const [countRes]: any = await mysqlPool.query(
+          'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+          [user.id]
+        );
+        const currentLinkCount = countRes[0]?.count || 0;
+
+        const token = jwt.sign(
+          { userId: user.id, email: user.email, plan: user.plan, name: user.name },
+          JWT_SECRET,
+          { expiresIn: '30d' }
+        );
+
+        return res.json({
+          token,
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            plan: user.plan,
+            status: user.status,
+            maxLinks: Number(user.max_links || 5),
+            currentLinkCount,
+          },
+        });
+      }
+
+      // Memory fallback
+      const token = jwt.sign({ userId: 'usr_local', email: cleanEmail, plan: 'pro' }, JWT_SECRET, {
+        expiresIn: '30d',
+      });
+      return res.json({
+        token,
+        user: { id: 'usr_local', email: cleanEmail, name: 'Alessandro', plan: 'pro', status: 'active', maxLinks: 999999 },
+      });
+    } catch (err: any) {
+      console.error('Login error:', err);
+      return res.status(500).json({ error: err.message || 'Errore durante il login' });
+    }
+  });
+
+  // Get current user profile
+  app.get('/api/auth/me', async (req: Request, res: Response) => {
+    const authUser = await getAuthUser(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Non autenticato' });
+    }
+
+    let currentLinkCount = 0;
+    if (mysqlPool) {
+      try {
+        const [countRes]: any = await mysqlPool.query(
+          'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+          [authUser.id]
+        );
+        currentLinkCount = countRes[0]?.count || 0;
+      } catch {}
+    }
+
+    res.json({
+      id: authUser.id,
+      email: authUser.email,
+      name: authUser.name,
+      plan: authUser.plan,
+      status: authUser.status,
+      maxLinks: Number(authUser.max_links || 5),
+      currentLinkCount,
+    });
+  });
+
+  // -------------------------------------------------------------
+  // SAMCART INTEGRATION & WEBHOOKS
+  // -------------------------------------------------------------
+
+  // Get / update SamCart checkout URL
+  app.get('/api/samcart-config', (req: Request, res: Response) => {
+    res.json({ checkoutUrl: samcartCheckoutUrl });
+  });
+
+  app.post('/api/samcart-config', (req: Request, res: Response) => {
+    const { checkoutUrl } = req.body || {};
+    if (checkoutUrl && typeof checkoutUrl === 'string') {
+      samcartCheckoutUrl = checkoutUrl.trim();
+    }
+    res.json({ success: true, checkoutUrl: samcartCheckoutUrl });
+  });
+
+  // SamCart Webhook Endpoint (Auto-creates PRO accounts or upgrades existing users)
+  app.post('/api/webhooks/samcart', async (req: Request, res: Response) => {
+    const payload = req.body || {};
+    console.log('[SamCart Webhook Received]:', JSON.stringify(payload, null, 2));
+
+    const eventType = (payload.type || payload.event || payload.action || 'order.created').toLowerCase();
+
+    // Extract customer email & details
+    const customerEmail = (
+      payload.customer?.email ||
+      payload.order?.customer_email ||
+      payload.email ||
+      payload.customer_email ||
+      payload.data?.customer?.email ||
+      ''
+    ).trim().toLowerCase();
+
+    const customerName = (
+      payload.customer?.first_name ||
+      payload.order?.first_name ||
+      payload.first_name ||
+      'Cliente SamCart'
+    ).trim();
+
+    const orderId = String(payload.order?.id || payload.order_id || payload.id || `sc_${Date.now()}`);
+
+    if (!customerEmail) {
+      return res.status(400).json({ error: 'Missing customer email in webhook payload' });
+    }
+
+    try {
+      await ensureMySQLTableExists();
+
+      // Check if cancellation or refund
+      const isCancelOrRefund =
+        eventType.includes('cancel') ||
+        eventType.includes('refund') ||
+        eventType.includes('delinquent') ||
+        eventType.includes('failed');
+
+      // 1. Look for existing user
+      const [existing]: any = await mysqlPool!.query(
+        'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+        [customerEmail]
+      );
+
+      if (Array.isArray(existing) && existing.length > 0) {
+        if (isCancelOrRefund) {
+          // Downgrade to Free
+          await mysqlPool!.query(
+            'UPDATE users SET plan = "free", status = "canceled", max_links = 5, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?',
+            [customerEmail]
+          );
+          console.log(`[SamCart Webhook] Downgraded ${customerEmail} to Free.`);
+        } else {
+          // Upgrade to PRO
+          await mysqlPool!.query(
+            'UPDATE users SET plan = "pro", status = "active", max_links = 999999, samcart_order_id = ?, updated_at = CURRENT_TIMESTAMP WHERE LOWER(email) = ?',
+            [orderId, customerEmail]
+          );
+          console.log(`[SamCart Webhook] Upgraded ${customerEmail} to PRO.`);
+        }
+      } else {
+        // Create new user
+        const newUserId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const defaultPassword = `Pro${Math.random().toString(36).substring(2, 8)}!`;
+        const passwordHash = await bcrypt.hash(defaultPassword, 10);
+
+        const plan = isCancelOrRefund ? 'free' : 'pro';
+        const maxLinks = isCancelOrRefund ? 5 : 999999;
+        const status = isCancelOrRefund ? 'canceled' : 'active';
+
+        await mysqlPool!.query(
+          'INSERT INTO users (id, email, password_hash, name, plan, status, max_links, samcart_order_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [newUserId, customerEmail, passwordHash, customerName, plan, status, maxLinks, orderId]
+        );
+        console.log(`[SamCart Webhook] Created new ${plan.toUpperCase()} user for ${customerEmail}.`);
+      }
+
+      return res.status(200).json({ success: true, received: true, email: customerEmail });
+    } catch (err: any) {
+      console.error('SamCart webhook processing error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // DEEP LINKS ENDPOINTS
+  // -------------------------------------------------------------
+
+  // List all deep links (Filtered by user if authenticated)
   app.get('/api/links', async (req: Request, res: Response) => {
+    const authUser = await getAuthUser(req);
+
     if (mysqlPool) {
       try {
         await ensureMySQLTableExists();
-        const [rows]: any = await mysqlPool.query('SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 200');
+
+        let query = 'SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 200';
+        let queryParams: any[] = [];
+
+        // If authenticated and not owner/admin: filter strictly by user_id
+        if (authUser && authUser.email !== 'alessandro.diruscio@gmail.com') {
+          query = 'SELECT * FROM deep_links WHERE user_id = ? ORDER BY created_at DESC LIMIT 200';
+          queryParams = [authUser.id];
+        }
+
+        const [rows]: any = await mysqlPool.query(query, queryParams);
         if (Array.isArray(rows) && rows.length > 0) {
           const links = rows
             .map((r: any) => {
@@ -320,6 +670,7 @@ async function startServer() {
               if (parsedData && typeof parsedData === 'object') {
                 return {
                   ...parsedData,
+                  userId: r.user_id || parsedData.userId || '',
                   clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
                 };
               }
@@ -338,6 +689,7 @@ async function startServer() {
                 project: r.folder || r.project || '',
                 description: r.description || '',
                 imageUrl: r.image_url || '',
+                userId: r.user_id || '',
                 clicks: Number(r.clicks || 0),
                 stats: parsedStats || {
                   iosClicks: 0,
@@ -527,11 +879,39 @@ async function startServer() {
   });
 
   // Create deep link
-  app.post('/api/links', (req: Request, res: Response) => {
+  app.post('/api/links', async (req: Request, res: Response) => {
     const { originalUrl, slug: customSlug, targetMode, title, folder, project, description, imageUrl, utm } = req.body;
 
     if (!originalUrl) {
       return res.status(400).json({ error: 'URL di destinazione obbligatorio' });
+    }
+
+    const authUser = await getAuthUser(req);
+    const userId = authUser ? authUser.id : '';
+
+    // Enforce Free limit (max 5 links)
+    if (authUser && authUser.plan === 'free') {
+      let count = 0;
+      if (mysqlPool) {
+        try {
+          const [c]: any = await mysqlPool.query(
+            'SELECT COUNT(*) as count FROM deep_links WHERE user_id = ?',
+            [authUser.id]
+          );
+          count = c[0]?.count || 0;
+        } catch {}
+      } else {
+        count = linksCache.filter((l) => l.userId === authUser.id).length;
+      }
+
+      if (count >= authUser.max_links) {
+        return res.status(403).json({
+          error: `Hai raggiunto il limite di ${authUser.max_links} deep link per il Piano Free. Effettua l'upgrade a PRO per link illimitati e dominio personalizzato!`,
+          upgradeRequired: true,
+          currentCount: count,
+          maxLinks: authUser.max_links,
+        });
+      }
     }
 
     const platform = detectPlatform(originalUrl);
@@ -559,6 +939,7 @@ async function startServer() {
         'Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.',
       imageUrl: imageUrl || '',
       utm: utm || {},
+      userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       clicks: 0,
@@ -585,8 +966,8 @@ async function startServer() {
       ensureMySQLTableExists().then(() => {
         mysqlPool!.query(
           `INSERT INTO deep_links (
-            id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, user_id, clicks, stats, data
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
             original_url = VALUES(original_url),
             platform = VALUES(platform),
@@ -596,6 +977,7 @@ async function startServer() {
             project = VALUES(project),
             description = VALUES(description),
             image_url = VALUES(image_url),
+            user_id = VALUES(user_id),
             stats = VALUES(stats),
             data = VALUES(data),
             updated_at = CURRENT_TIMESTAMP`,
@@ -610,6 +992,7 @@ async function startServer() {
             newLink.folder || newLink.project || '',
             newLink.description || '',
             newLink.imageUrl || '',
+            userId,
             0,
             JSON.stringify(newLink.stats || {}),
             JSON.stringify(newLink),

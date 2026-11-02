@@ -4,17 +4,17 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { CloudUpload, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { CloudUpload, RefreshCw, CheckCircle2, Zap, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { Header } from './components/Header';
 import { LinksTable } from './components/LinksTable';
-import { DeviceSimulator } from './components/DeviceSimulator';
 import { AnalyticsView } from './components/AnalyticsView';
-import { HowItWorksGuide } from './components/HowItWorksGuide';
-import { DeployGuide } from './components/DeployGuide';
 import { LinkGeneratorModal } from './components/LinkGeneratorModal';
 import { QrCodeModal } from './components/QrCodeModal';
-import { INITIAL_SAMPLE_LINKS, PREDEFINED_SAMPLE_SLUGS } from './lib/sampleLinks';
-import { DeepLink } from './types/deepLink';
+import { AuthModal } from './components/AuthModal';
+import { UpgradeProModal } from './components/UpgradeProModal';
+import { LandingPage } from './components/LandingPage';
+import { PREDEFINED_SAMPLE_SLUGS } from './lib/sampleLinks';
+import { DeepLink, UserProfile } from './types/deepLink';
 import { detectPlatform, slugify } from './lib/deepLinkEngine';
 
 const normalizeLink = (l: any): DeepLink => ({
@@ -28,6 +28,7 @@ const normalizeLink = (l: any): DeepLink => ({
   project: l?.folder || l?.project || '',
   description: l?.description || '',
   imageUrl: l?.imageUrl || '',
+  userId: l?.userId || '',
   clicks: typeof l?.clicks === 'number' ? l.clicks : 0,
   createdAt: l?.createdAt || new Date().toISOString(),
   updatedAt: l?.updatedAt || new Date().toISOString(),
@@ -68,12 +69,36 @@ export default function App() {
     return [];
   });
 
-  const [currentTab, setCurrentTab] = useState<'links' | 'simulator' | 'guide' | 'analytics' | 'deploy'>('links');
+  const [currentTab, setCurrentTab] = useState<'links' | 'analytics'>('links');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<DeepLink | null>(null);
   const [qrModalData, setQrModalData] = useState<{ url: string; title: string } | null>(null);
-  const [simulatedLink, setSimulatedLink] = useState<DeepLink | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Authentication & Tiers (Free vs Pro)
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('deepdirect_token') || null;
+    }
+    return null;
+  });
+
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('deepdirect_user');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return null;
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+
   const [dbStatus, setDbStatus] = useState<{
     hasDatabase?: boolean;
     hasMySQL?: boolean;
@@ -81,6 +106,7 @@ export default function App() {
     tableReady?: boolean;
     message?: string;
   } | null>(null);
+
   const [customBaseUrl, setCustomBaseUrl] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('deepdirect_custom_domain') || '';
@@ -98,15 +124,53 @@ export default function App() {
     } catch {}
   };
 
+  const fetchProfile = async (token: string) => {
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const user = await res.json();
+        setCurrentUser(user);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('deepdirect_user', JSON.stringify(user));
+        }
+      } else if (res.status === 401) {
+        handleLogout();
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     checkDbStatus();
-  }, []);
+    if (authToken) {
+      fetchProfile(authToken);
+    }
+  }, [authToken]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('deepdirect_saved_links', JSON.stringify(links));
     }
   }, [links]);
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('deepdirect_token');
+      localStorage.removeItem('deepdirect_user');
+    }
+    setCurrentTab('links');
+    fetchLinks(null);
+  };
+
+  const handleAuthSuccess = (user: UserProfile, token: string) => {
+    setCurrentUser(user);
+    setAuthToken(token);
+    setCurrentTab('links');
+    fetchLinks(token);
+  };
 
   const handleSaveCustomBaseUrl = (newUrl: string) => {
     setCustomBaseUrl(newUrl);
@@ -128,13 +192,16 @@ export default function App() {
     try {
       const res = await fetch('/api/links/sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
         body: JSON.stringify(linksToSync),
       });
       if (res.ok) {
         const data = await res.json();
         const count = data.count || linksToSync.length;
-        setSyncMessage(`✅ ${count} link sincronizzati con successo nel Database Supabase! Ora sono attivi ovunque.`);
+        setSyncMessage(`✅ ${count} link sincronizzati con successo nel Database! Ora sono attivi ovunque.`);
         setTimeout(() => setSyncMessage(null), 5000);
       }
     } catch (err) {
@@ -145,9 +212,12 @@ export default function App() {
   };
 
   // Load links from backend API, merge with localStorage and auto-sync missing links
-  const fetchLinks = async () => {
+  const fetchLinks = async (overrideToken?: string | null) => {
+    const tokenToUse = overrideToken !== undefined ? overrideToken : authToken;
     try {
-      const res = await fetch('/api/links');
+      const res = await fetch('/api/links', {
+        headers: tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {},
+      });
       if (res.ok) {
         const serverLinks = await res.json();
         if (Array.isArray(serverLinks)) {
@@ -201,15 +271,30 @@ export default function App() {
 
   useEffect(() => {
     fetchLinks();
-  }, []);
+  }, [authToken]);
 
   const handleSaveLink = async (linkData: Partial<DeepLink>) => {
+    const isPro = currentUser?.plan === 'pro';
+
+    // Check Free limit on client side as an early check
+    if (currentUser && currentUser.plan === 'free' && !editingLink) {
+      const activeCount = links.length;
+      if (activeCount >= currentUser.maxLinks) {
+        setIsCreateModalOpen(false);
+        setIsUpgradeModalOpen(true);
+        return;
+      }
+    }
+
     if (editingLink) {
       // Update existing
       try {
         const res = await fetch(`/api/links/${editingLink.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
           body: JSON.stringify(linkData),
         });
         if (res.ok) {
@@ -231,12 +316,28 @@ export default function App() {
       try {
         const res = await fetch('/api/links', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
           body: JSON.stringify(linkData),
         });
+
+        if (res.status === 403) {
+          const errData = await res.json().catch(() => ({}));
+          if (errData.upgradeRequired) {
+            setIsCreateModalOpen(false);
+            setIsUpgradeModalOpen(true);
+            return;
+          }
+        }
+
         if (res.ok) {
           const created = await res.json();
           setLinks((prev) => [normalizeLink(created), ...prev]);
+          if (currentUser && currentUser.plan === 'free') {
+            setCurrentUser((prev) => (prev ? { ...prev, currentLinkCount: (prev.currentLinkCount || 0) + 1 } : null));
+          }
         } else {
           const platform = detectPlatform(linkData.originalUrl || '');
           const newLocalLink: DeepLink = {
@@ -249,6 +350,7 @@ export default function App() {
             description: linkData.description || '',
             imageUrl: linkData.imageUrl || '',
             utm: linkData.utm || {},
+            userId: currentUser?.id || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             clicks: 0,
@@ -275,6 +377,7 @@ export default function App() {
           description: linkData.description || '',
           imageUrl: linkData.imageUrl || '',
           utm: linkData.utm || {},
+          userId: currentUser?.id || '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           clicks: 0,
@@ -292,28 +395,19 @@ export default function App() {
     }
   };
 
-  const handleQuickCreate = async (url: string) => {
-    const platform = detectPlatform(url);
-    await handleSaveLink({
-      originalUrl: url,
-      slug: slugify(platform + '-' + Math.random().toString(36).substring(2, 6)),
-      targetMode: platform === 'generic' ? 'system_browser' : 'smart',
-      title: `${platform.toUpperCase()} Deep Link`,
-    });
-  };
-
   const handleDeleteLink = async (id: string) => {
     try {
-      await fetch(`/api/links/${id}`, { method: 'DELETE' });
+      await fetch(`/api/links/${id}`, {
+        method: 'DELETE',
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
     } catch {
       // ignore
     }
     setLinks((prev) => prev.filter((l) => l.id !== id));
-  };
-
-  const handleOpenSimulator = (link: DeepLink) => {
-    setSimulatedLink(link);
-    setCurrentTab('simulator');
+    if (currentUser && currentUser.plan === 'free') {
+      setCurrentUser((prev) => (prev ? { ...prev, currentLinkCount: Math.max(0, (prev.currentLinkCount || 1) - 1) } : null));
+    }
   };
 
   const handleOpenQrModal = (link: DeepLink) => {
@@ -326,6 +420,9 @@ export default function App() {
     });
   };
 
+  const isPro = currentUser?.plan === 'pro';
+  const isFreeAtLimit = currentUser && currentUser.plan === 'free' && links.length >= currentUser.maxLinks;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Header */}
@@ -333,96 +430,126 @@ export default function App() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         onOpenCreateModal={() => {
+          if (isFreeAtLimit) {
+            setIsUpgradeModalOpen(true);
+            return;
+          }
           setEditingLink(null);
           setIsCreateModalOpen(true);
         }}
+        currentUser={currentUser}
+        onOpenAuth={() => {
+          setAuthModalMode('login');
+          setIsAuthModalOpen(true);
+        }}
+        onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Viewport Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Database Status Banner */}
-        {dbStatus?.hasSupabase && !dbStatus.tableReady && !dbStatus.hasMySQL && (
-          <div className="mb-6 p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-lg">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0" />
-              <span>
-                <strong>Supabase rilevato su Vercel!</strong> Manca solo un passaggio: esegui lo script SQL nel tuo SQL Editor di Supabase per attivare il salvataggio permanente.
-              </span>
-            </div>
-            <button
-              onClick={() => setCurrentTab('deploy')}
-              className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold rounded-lg border border-amber-500/40 transition-colors whitespace-nowrap self-start sm:self-auto"
-            >
-              Copia Script SQL →
-            </button>
-          </div>
-        )}
-
-        {syncMessage && (
-          <div className="mb-6 px-4 py-3 bg-indigo-950/60 border border-indigo-500/40 rounded-xl flex items-center justify-between text-xs text-indigo-200 shadow-md">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>{syncMessage}</span>
-            </div>
-          </div>
-        )}
-
-        {dbStatus?.tableReady && (
-          <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300 shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-              <span>
-                <strong>
-                  {dbStatus.hasMySQL ? 'Database Hostinger MySQL Connesso' : 'Database Cloud Connesso'}
-                </strong>
-                : I tuoi link e le statistiche sono memorizzati in modo permanente nel database!
-              </span>
-            </div>
-            <button
-              onClick={() => syncLinksToDatabase(links)}
-              disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold rounded-lg border border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza nel Database'}</span>
-            </button>
-          </div>
-        )}
-
-        {currentTab === 'links' && (
-          <LinksTable
-            links={links}
-            customBaseUrl={customBaseUrl}
+        {!currentUser ? (
+          /* Home Page Pubblica: Landing Page per visitatori prima del login */
+          <LandingPage
+            onGoToDashboard={() => {
+              setAuthModalMode('login');
+              setIsAuthModalOpen(true);
+            }}
             onOpenCreateModal={() => {
-              setEditingLink(null);
-              setIsCreateModalOpen(true);
+              setAuthModalMode('register');
+              setIsAuthModalOpen(true);
             }}
-            onEditLink={(link) => {
-              setEditingLink(link);
-              setIsCreateModalOpen(true);
+            onOpenAuth={() => {
+              setAuthModalMode('login');
+              setIsAuthModalOpen(true);
             }}
-            onDeleteLink={handleDeleteLink}
-            onOpenQrModal={handleOpenQrModal}
-            onOpenSimulator={handleOpenSimulator}
-            onNavigateToDeploy={() => setCurrentTab('deploy')}
+            onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
+            currentUser={currentUser}
           />
+        ) : (
+          /* Piattaforma per Utenti Loggati: SOLO I Tuoi Deep Link e Statistiche */
+          <>
+            {/* Free Plan Limit Alert Banner */}
+            {isFreeAtLimit && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-xl animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-sm">
+                      Limite del Piano Free Raggiunto ({links.length}/5 link attivi)
+                    </div>
+                    <div className="text-amber-300/90 text-xs">
+                      Hai raggiunto il limite massimo del piano gratuito. Passa a PRO per creare link illimitati e gestire le tue campagne senza restrizioni!
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsUpgradeModalOpen(true)}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
+                >
+                  <Zap className="w-4 h-4 fill-current" />
+                  <span>Sblocca PRO Illimitato</span>
+                </button>
+              </div>
+            )}
+
+            {syncMessage && (
+              <div className="mb-6 px-4 py-3 bg-indigo-950/60 border border-indigo-500/40 rounded-xl flex items-center justify-between text-xs text-indigo-200 shadow-md">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{syncMessage}</span>
+                </div>
+              </div>
+            )}
+
+            {dbStatus?.tableReady && (
+              <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span>
+                    <strong>
+                      {dbStatus.hasMySQL ? 'Database Hostinger MySQL Connesso' : 'Database Cloud Connesso'}
+                    </strong>
+                    : I tuoi link e le statistiche sono memorizzati in modo permanente nel database!
+                  </span>
+                </div>
+                <button
+                  onClick={() => syncLinksToDatabase(links)}
+                  disabled={isSyncing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold rounded-lg border border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza nel Database'}</span>
+                </button>
+              </div>
+            )}
+
+            {currentTab === 'links' && (
+              <LinksTable
+                links={links}
+                customBaseUrl={customBaseUrl}
+                onOpenCreateModal={() => {
+                  if (isFreeAtLimit) {
+                    setIsUpgradeModalOpen(true);
+                    return;
+                  }
+                  setEditingLink(null);
+                  setIsCreateModalOpen(true);
+                }}
+                onEditLink={(link) => {
+                  setEditingLink(link);
+                  setIsCreateModalOpen(true);
+                }}
+                onDeleteLink={handleDeleteLink}
+                onOpenQrModal={handleOpenQrModal}
+              />
+            )}
+
+            {currentTab === 'analytics' && <AnalyticsView links={links} />}
+          </>
         )}
-
-        {currentTab === 'simulator' && (
-          <DeviceSimulator links={links} selectedLink={simulatedLink} />
-        )}
-
-        {currentTab === 'deploy' && (
-          <DeployGuide
-            links={links}
-            customBaseUrl={customBaseUrl}
-            onSaveCustomBaseUrl={handleSaveCustomBaseUrl}
-          />
-        )}
-
-        {currentTab === 'analytics' && <AnalyticsView links={links} />}
-
-        {currentTab === 'guide' && <HowItWorksGuide />}
       </main>
 
       {/* Footer */}
@@ -467,6 +594,26 @@ export default function App() {
           title={qrModalData.title}
         />
       )}
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
+      {/* Upgrade to PRO Modal (SamCart Integration) */}
+      <UpgradeProModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        currentUser={currentUser}
+        onOpenAuth={() => {
+          setIsUpgradeModalOpen(false);
+          setAuthModalMode('register');
+          setIsAuthModalOpen(true);
+        }}
+      />
     </div>
   );
 }
