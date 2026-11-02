@@ -16,6 +16,7 @@ import { LandingPage } from './components/LandingPage';
 import { PREDEFINED_SAMPLE_SLUGS } from './lib/sampleLinks';
 import { DeepLink, UserProfile } from './types/deepLink';
 import { detectPlatform, slugify } from './lib/deepLinkEngine';
+import { ThemeProvider } from './context/ThemeContext';
 
 const normalizeLink = (l: any): DeepLink => ({
   id: l?.id || `link_${Date.now()}`,
@@ -48,7 +49,7 @@ const normalizeLink = (l: any): DeepLink => ({
   },
 });
 
-export default function App() {
+function AppInner() {
   const [links, setLinks] = useState<DeepLink[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('deepdirect_saved_links');
@@ -424,7 +425,7 @@ export default function App() {
   const isFreeAtLimit = currentUser && currentUser.plan === 'free' && links.length >= currentUser.maxLinks;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Header */}
       <Header
         currentTab={currentTab}
@@ -471,16 +472,16 @@ export default function App() {
           <>
             {/* Free Plan Limit Alert Banner */}
             {isFreeAtLimit && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-amber-950/60 via-slate-900 to-slate-900 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200 shadow-xl animate-fadeIn">
+              <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/60 dark:via-slate-900 dark:to-slate-900 border border-amber-300 dark:border-amber-500/50 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 shadow-md animate-fadeIn">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
+                  <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg shrink-0">
                     <AlertTriangle className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-white text-sm">
+                    <div className="font-bold text-slate-900 dark:text-white text-sm">
                       Limite del Piano Free Raggiunto ({links.length}/5 link attivi)
                     </div>
-                    <div className="text-amber-300/90 text-xs">
+                    <div className="text-amber-800 dark:text-amber-300/90 text-xs">
                       Hai raggiunto il limite massimo del piano gratuito. Passa a PRO per creare link illimitati e gestire le tue campagne senza restrizioni!
                     </div>
                   </div>
@@ -496,18 +497,18 @@ export default function App() {
             )}
 
             {syncMessage && (
-              <div className="mb-6 px-4 py-3 bg-indigo-950/60 border border-indigo-500/40 rounded-xl flex items-center justify-between text-xs text-indigo-200 shadow-md">
+              <div className="mb-6 px-4 py-3 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-500/40 rounded-xl flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200 shadow-xs">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                   <span>{syncMessage}</span>
                 </div>
               </div>
             )}
 
             {dbStatus?.tableReady && (
-              <div className="mb-6 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-300 shadow-sm">
+              <div className="mb-6 px-4 py-2.5 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-900 dark:text-emerald-300 shadow-xs">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                   <span>
                     <strong>
                       {dbStatus.hasMySQL ? 'Database Hostinger MySQL Connesso' : 'Database Cloud Connesso'}
@@ -518,7 +519,7 @@ export default function App() {
                 <button
                   onClick={() => syncLinksToDatabase(links)}
                   disabled={isSyncing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold rounded-lg border border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-emerald-100 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-semibold rounded-lg border border-emerald-300 dark:border-emerald-500/30 transition-colors whitespace-nowrap self-start sm:self-auto disabled:opacity-50 shadow-xs"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                   <span>{isSyncing ? 'Sincronizzazione...' : 'Sincronizza nel Database'}</span>
@@ -553,7 +554,7 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-slate-900 bg-slate-950/80 py-6">
+      <footer className="mt-auto border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div>
             <span>DeepDirect Engine</span>
@@ -615,5 +616,13 @@ export default function App() {
         }}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   );
 }

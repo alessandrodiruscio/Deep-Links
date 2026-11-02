@@ -4,13 +4,10 @@ import {
   Smartphone,
   Compass,
   Zap,
-  DollarSign,
   PiggyBank,
-  CheckCircle2,
   Users,
 } from 'lucide-react';
 import { DeepLink } from '../types/deepLink';
-import { getPlatformName } from '../lib/deepLinkEngine';
 
 interface AnalyticsViewProps {
   links: DeepLink[];
@@ -33,11 +30,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
   const totalInApp =
     instagramClicks + tiktokClicks + facebookClicks + whatsappClicks + otherClicks || 1;
 
-  // Comparison savings calculation:
-  // URLGenius and OpenInApp typically charge:
-  // Starter: $29/mo (up to 2,000 clicks)
-  // Pro: $49/mo (up to 5,000 clicks)
-  // Enterprise: $99/mo (10,000+ clicks)
   const monthlySavings = totalClicks > 5000 ? 99 : totalClicks > 2000 ? 49 : 29;
   const annualSavings = monthlySavings * 12;
 
@@ -49,25 +41,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             Statistiche di Traffico e Risparmio
           </h2>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
             Monitora quanti utenti hanno abbandonato il webview di Instagram/TikTok per aprire i tuoi link
             nelle app native o nel browser di sistema, e calcola quanto stai risparmiando!
           </p>
         </div>
 
         {/* Savings Badge */}
-        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl">
-          <PiggyBank className="w-5 h-5 text-emerald-400" />
+        <div className="flex items-center gap-2.5 px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/30 rounded-xl">
+          <PiggyBank className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           <div>
-            <div className="text-[10px] uppercase font-bold text-emerald-400">Risparmio Stimato</div>
-            <div className="text-sm font-bold text-white font-mono">
-              ~{annualSavings} € <span className="text-[11px] text-emerald-300 font-normal">/ anno</span>
+            <div className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400">Risparmio Stimato</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+              ~{annualSavings} € <span className="text-[11px] text-emerald-600 dark:text-emerald-300 font-normal">/ anno</span>
             </div>
           </div>
         </div>
@@ -75,45 +67,45 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Click Totali Tracciati</span>
-            <Users className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Click Totali Tracciati</span>
+            <Users className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-2xl font-bold text-white font-mono tabular-nums">
+          <div className="text-2xl font-bold text-slate-900 dark:text-white font-mono tabular-nums">
             {totalClicks.toLocaleString()}
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Attraverso {links.length} deep link attivi</p>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Aperture in App Nativa</span>
-            <Smartphone className="w-4 h-4 text-indigo-400" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Aperture in App Nativa</span>
+            <Smartphone className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
           </div>
-          <div className="text-2xl font-bold text-indigo-400 font-mono tabular-nums">
+          <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400 font-mono tabular-nums">
             {totalAppOpens.toLocaleString()}
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Amazon, YouTube, Spotify, ecc.</p>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Bypass su Safari/Chrome</span>
-            <Compass className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Bypass su Safari/Chrome</span>
+            <Compass className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           </div>
-          <div className="text-2xl font-bold text-cyan-400 font-mono tabular-nums">
+          <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400 font-mono tabular-nums">
             {totalBrowserEscapes.toLocaleString()}
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Usciti dal webview di Instagram/TikTok</p>
         </div>
 
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm transition-colors">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-400">Tasso di Successo Bypass</span>
-            <Zap className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tasso di Successo Bypass</span>
+            <Zap className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-emerald-400 font-mono tabular-nums">
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">
             {breakoutRate}%
           </div>
           <p className="text-[11px] text-slate-500 mt-1">Utenti non persi nel webview</p>
@@ -123,8 +115,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
       {/* Traffic Origin & Devices */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* In-App Browser Sources */}
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center justify-between">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 shadow-sm transition-colors">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between">
             <span>Sorgenti WebView In-App</span>
             <span className="text-xs text-slate-500 font-normal">Origine dei clic</span>
           </h3>
@@ -132,12 +124,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
           <div className="space-y-3">
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">📸 Instagram (Bio, Storie, DM)</span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">📸 Instagram (Bio, Storie, DM)</span>
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {instagramClicks} ({Math.round((instagramClicks / totalInApp) * 100)}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-pink-500 rounded-full"
                   style={{ width: `${(instagramClicks / totalInApp) * 100}%` }}
@@ -147,14 +139,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">🎵 TikTok (Bio Link & Video)</span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">🎵 TikTok (Bio Link & Video)</span>
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {tiktokClicks} ({Math.round((tiktokClicks / totalInApp) * 100)}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-cyan-400 rounded-full"
+                  className="h-full bg-cyan-500 rounded-full"
                   style={{ width: `${(tiktokClicks / totalInApp) * 100}%` }}
                 ></div>
               </div>
@@ -162,12 +154,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">📘 Facebook Mobile</span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">📘 Facebook Mobile</span>
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {facebookClicks} ({Math.round((facebookClicks / totalInApp) * 100)}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-blue-500 rounded-full"
                   style={{ width: `${(facebookClicks / totalInApp) * 100}%` }}
@@ -177,12 +169,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">💬 WhatsApp Web/App</span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">💬 WhatsApp Web/App</span>
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {whatsappClicks} ({Math.round((whatsappClicks / totalInApp) * 100)}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-emerald-500 rounded-full"
                   style={{ width: `${(whatsappClicks / totalInApp) * 100}%` }}
@@ -193,8 +185,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
         </div>
 
         {/* Operating Systems */}
-        <div className="p-5 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-          <h3 className="text-sm font-bold text-white flex items-center justify-between">
+        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 shadow-sm transition-colors">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center justify-between">
             <span>Sistemi Operativi</span>
             <span className="text-xs text-slate-500 font-normal">Dispositivi utenti</span>
           </h3>
@@ -202,36 +194,36 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5">
                   🍏 Apple iOS (iPhone / iPad)
                 </span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {totalIos} ({totalClicks > 0 ? Math.round((totalIos / totalClicks) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-indigo-500 rounded-full"
                   style={{ width: `${totalClicks > 0 ? (totalIos / totalClicks) * 100 : 0}%` }}
                 ></div>
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
-                Apre URL Schemes nativi o attiva la guida visuale verso Safari.
+                Apre URL Schemes nativi o attiva il redirect intelligente verso Safari.
               </p>
             </div>
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium flex items-center gap-1.5">
+                <span className="text-slate-700 dark:text-slate-300 font-medium flex items-center gap-1.5">
                   🤖 Google Android
                 </span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {totalAndroid} ({totalClicks > 0 ? Math.round((totalAndroid / totalClicks) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-400 rounded-full"
+                  className="h-full bg-emerald-500 rounded-full"
                   style={{ width: `${totalClicks > 0 ? (totalAndroid / totalClicks) * 100 : 0}%` }}
                 ></div>
               </div>
@@ -242,14 +234,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ links }) => {
 
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-slate-300 font-medium">💻 Desktop / Mac / PC</span>
-                <span className="text-slate-400 font-mono tabular-nums">
+                <span className="text-slate-700 dark:text-slate-300 font-medium">💻 Desktop / Mac / PC</span>
+                <span className="text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                   {totalDesktop} ({totalClicks > 0 ? Math.round((totalDesktop / totalClicks) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-slate-600 rounded-full"
+                  className="h-full bg-slate-400 dark:bg-slate-600 rounded-full"
                   style={{ width: `${totalClicks > 0 ? (totalDesktop / totalClicks) * 100 : 0}%` }}
                 ></div>
               </div>
