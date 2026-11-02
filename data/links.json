@@ -1,18 +1,16 @@
 [
   {
-    "id": "link_1793199013605_wjb8",
-    "slug": "hostinger-test",
-    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "platform": "youtube",
+    "id": "link_1793639727400",
+    "slug": "manychat-firstmonth",
+    "originalUrl": "https://www.alessandrodiruscio.com/manychat-firstmonth",
+    "platform": "generic",
     "targetMode": "smart",
-    "title": "Test Hostinger Link",
-    "folder": "Test",
-    "project": "Test",
-    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "title": "Manychat (100% OFF 1st month)",
+    "folder": "Social Media",
+    "project": "Social Media",
+    "description": "",
     "imageUrl": "",
-    "utm": {},
-    "createdAt": "2026-10-28T14:50:13.605Z",
-    "updatedAt": "2026-10-28T14:50:13.605Z",
+    "userId": "usr_admin",
     "clicks": 0,
     "stats": {
       "iosClicks": 0,
@@ -30,34 +28,61 @@
     }
   },
   {
-    "id": "link_1793190734428_ug2p",
-    "slug": "test-curl",
-    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "platform": "youtube",
+    "id": "link_1793639555691",
+    "slug": "profilo-instagram",
+    "originalUrl": "https://www.instagram.com/alessandro_contentcreator/",
+    "platform": "instagram",
     "targetMode": "smart",
-    "title": "Test Link",
-    "folder": "",
-    "project": "",
-    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "title": "Profilo su Instagram",
+    "folder": "Social Media",
+    "project": "Social Media",
+    "description": "",
     "imageUrl": "",
-    "utm": {},
-    "createdAt": "2026-10-28T12:32:14.428Z",
-    "updatedAt": "2026-10-28T12:32:14.428Z",
-    "clicks": 2,
+    "userId": "usr_admin",
+    "clicks": 1,
     "stats": {
-      "iosClicks": 1,
+      "iosClicks": 0,
       "androidClicks": 0,
-      "desktopClicks": 1,
+      "desktopClicks": 0,
       "inAppBreaks": {
-        "instagram": 1,
+        "instagram": 0,
         "tiktok": 0,
         "facebook": 0,
         "whatsapp": 0,
         "other": 0
       },
       "appOpens": 0,
-      "browserEscapes": 2
-    }
+      "browserEscapes": 0
+    },
+    "updatedAt": "2026-11-02T17:22:23.258Z"
+  },
+  {
+    "id": "link_1793102075368",
+    "slug": "youtube-ejn0",
+    "originalUrl": "https://youtu.be/fw7lugmh6cY?si=Jtw86df7VWyJ4ARq",
+    "platform": "youtube",
+    "targetMode": "smart",
+    "title": "YOUTUBE Deep Link",
+    "description": "",
+    "imageUrl": "",
+    "createdAt": "2026-10-30T11:07:14.564Z",
+    "updatedAt": "2026-10-30T11:07:14.564Z",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    },
+    "userId": ""
   },
   {
     "id": "link_1793119976032_ezs1",
@@ -66,11 +91,8 @@
     "platform": "generic",
     "targetMode": "system_browser",
     "title": "Google",
-    "folder": "",
-    "project": "",
     "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
     "imageUrl": "",
-    "utm": {},
     "createdAt": "2026-10-27T16:52:56.032Z",
     "updatedAt": "2026-10-27T16:52:56.032Z",
     "clicks": 1,
@@ -87,6 +109,426 @@
       },
       "appOpens": 0,
       "browserEscapes": 1
+    },
+    "userId": ""
+  },
+  {
+    "id": "link_1793190734428_ug2p",
+    "slug": "test-curl",
+    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "platform": "youtube",
+    "targetMode": "smart",
+    "title": "Test Link",
+    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "imageUrl": "",
+    "createdAt": "2026-10-28T12:32:14.428Z",
+    "updatedAt": "2026-10-28T12:32:14.428Z",
+    "clicks": 2,
+    "stats": {
+      "iosClicks": 1,
+      "androidClicks": 0,
+      "desktopClicks": 1,
+      "inAppBreaks": {
+        "instagram": 1,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 2
+    },
+    "userId": ""
+  },
+  {
+    "id": "link_1793199013605_wjb8",
+    "slug": "hostinger-test",
+    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "platform": "youtube",
+    "targetMode": "smart",
+    "title": "Test Hostinger Link",
+    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
+    "imageUrl": "",
+    "createdAt": "2026-10-28T14:50:13.605Z",
+    "updatedAt": "2026-10-28T14:50:13.605Z",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    },
+    "userId": ""
+  },
+  {
+    "id": "link_1793638733638",
+    "slug": "iscriviti-alla-newsletter",
+    "originalUrl": "https://www.alessandrodiruscio.com/iscriviti-alla-newsletter/",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Iscriviti alla Newsletter",
+    "folder": "",
+    "project": "",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
     }
+  },
+  {
+    "id": "link_1793638692092",
+    "slug": "dji_mic_mini",
+    "originalUrl": "https://link.amazon/B0idElnUv",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Microfono DJI Mini",
+    "folder": "E-Commerce",
+    "project": "E-Commerce",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793638649042",
+    "slug": "screen_studio",
+    "originalUrl": "https://screen.studio/",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Screen Studio",
+    "folder": "Video Editing",
+    "project": "Video Editing",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793637968483",
+    "slug": "google_flow",
+    "originalUrl": "https://flow.google.com/",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Google Flow",
+    "folder": "IA",
+    "project": "IA",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793636405667",
+    "slug": "notion",
+    "originalUrl": "https://www.alessandrodiruscio.com/notion",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Notion",
+    "folder": "Organizzazione",
+    "project": "Organizzazione",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793636371979",
+    "slug": "livid",
+    "originalUrl": "https://www.alessandrodiruscio.com/livid",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Livid",
+    "folder": "Video Editing",
+    "project": "Video Editing",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793636327618",
+    "slug": "diariocontentcreator_facebook",
+    "originalUrl": "https://www.facebook.com/diario.content.creator",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Facebook Page - Diario di un Content Creator",
+    "folder": "Social Media",
+    "project": "Social Media",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793636279504",
+    "slug": "higgsfield",
+    "originalUrl": "https://www.alessandrodiruscio.com/higgsfield",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "30% OFF Higgsfield",
+    "folder": "IA",
+    "project": "IA",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793636235442",
+    "slug": "osmo-mobile",
+    "originalUrl": "https://link.amazon/B0gypORBj",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Osmo Mobile",
+    "folder": "E-Commerce",
+    "project": "E-Commerce",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 2,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 2,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 2
+    },
+    "updatedAt": "2026-11-02T17:22:52.067Z"
+  },
+  {
+    "id": "link_1793628956554",
+    "slug": "descript",
+    "originalUrl": "https://www.alessandrodiruscio.com/descript",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Descript",
+    "folder": "Video Editing",
+    "project": "Video Editing",
+    "description": "",
+    "imageUrl": "",
+    "userId": "usr_admin",
+    "clicks": 5,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    }
+  },
+  {
+    "id": "link_1793569093444",
+    "slug": "landing-da-zero-a-reel",
+    "originalUrl": "https://www.alessandrodiruscio.com/landing-da-zero-a-reel/",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Da Zero a Reel Landing Page",
+    "folder": "",
+    "project": "",
+    "description": "",
+    "clicks": 1,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    },
+    "userId": "usr_admin"
+  },
+  {
+    "id": "link_1793357878179",
+    "slug": "mochi",
+    "originalUrl": "https://themochi.app/",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Mochi App",
+    "folder": "",
+    "project": "",
+    "description": "",
+    "clicks": 12,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    },
+    "userId": "usr_admin"
+  },
+  {
+    "id": "link_1793119803219",
+    "slug": "cavalletto-vanguard",
+    "originalUrl": "https://go.alessandrodiruscio.com/l/cavalletto",
+    "platform": "generic",
+    "targetMode": "smart",
+    "title": "Cavalletto Vanguard Amazon",
+    "folder": "E-Commerce",
+    "project": "E-Commerce",
+    "description": "",
+    "imageUrl": "",
+    "clicks": 0,
+    "stats": {
+      "iosClicks": 0,
+      "androidClicks": 0,
+      "desktopClicks": 0,
+      "inAppBreaks": {
+        "instagram": 0,
+        "tiktok": 0,
+        "facebook": 0,
+        "whatsapp": 0,
+        "other": 0
+      },
+      "appOpens": 0,
+      "browserEscapes": 0
+    },
+    "userId": "usr_admin"
   }
 ]

@@ -234,11 +234,10 @@ function AppInner() {
             );
 
             // Find user links that exist locally in browser but not on server yet
-            const serverSlugSet = new Set(
-              cleanServerLinks.map((s) => s.slug.toLowerCase())
-            );
+            const serverIdSet = new Set(cleanServerLinks.map((s) => s.id));
+            const serverSlugSet = new Set(cleanServerLinks.map((s) => s.slug.toLowerCase()));
             const missingOnServer = userCustomLinks.filter(
-              (ul) => !serverSlugSet.has((ul.slug || '').toLowerCase())
+              (ul) => !serverIdSet.has(ul.id) && !serverSlugSet.has((ul.slug || '').toLowerCase())
             );
 
             // Auto-sync them up to the server/database immediately!
@@ -246,13 +245,15 @@ function AppInner() {
               syncLinksToDatabase(missingOnServer);
             }
 
-            // Merge map: start with server links, then overlay user's custom links
+            // Merge map: keyed by unique link id so updates correctly overwrite
             const map = new Map<string, DeepLink>();
             for (const item of cleanServerLinks) {
-              map.set(item.slug.toLowerCase(), item);
+              map.set(item.id, item);
             }
             for (const userLink of userCustomLinks) {
-              map.set(userLink.slug.toLowerCase(), userLink);
+              if (!map.has(userLink.id)) {
+                map.set(userLink.id, userLink);
+              }
             }
 
             const merged = Array.from(map.values());
@@ -300,7 +301,7 @@ function AppInner() {
         });
         if (res.ok) {
           const updated = await res.json();
-          setLinks((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
+          setLinks((prev) => prev.map((l) => (l.id === editingLink.id || l.id === updated.id ? updated : l)));
         } else {
           setLinks((prev) =>
             prev.map((l) => (l.id === editingLink.id ? ({ ...l, ...linkData } as DeepLink) : l))

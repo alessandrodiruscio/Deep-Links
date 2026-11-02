@@ -9,7 +9,7 @@ import postgres from 'postgres';
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { applyUtm, detectPlatform, generateProtocols, slugify } from './src/lib/deepLinkEngine';
+import { applyUtm, detectPlatform, generateProtocols, normalizeUrl, slugify } from './src/lib/deepLinkEngine';
 import { INITIAL_SAMPLE_LINKS } from './src/lib/sampleLinks';
 import { DeepLink } from './src/types/deepLink';
 
@@ -702,6 +702,8 @@ async function startServer() {
               };
             })
             .filter((l: any) => l && !SAMPLE_SLUGS.has((l.slug || '').toLowerCase()));
+          linksCache = links;
+          saveLinks(linksCache);
           return res.json(links);
         }
       } catch (err) {
@@ -787,6 +789,7 @@ async function startServer() {
               id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, clicks, stats, data
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
+              slug = VALUES(slug),
               original_url = VALUES(original_url),
               platform = VALUES(platform),
               target_mode = VALUES(target_mode),
@@ -969,6 +972,7 @@ async function startServer() {
             id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, user_id, clicks, stats, data
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON DUPLICATE KEY UPDATE
+            slug = VALUES(slug),
             original_url = VALUES(original_url),
             platform = VALUES(platform),
             target_mode = VALUES(target_mode),
@@ -1064,30 +1068,101 @@ async function startServer() {
   });
 
   // Update deep link
-  app.put('/api/links/:id', (req: Request, res: Response) => {
+  app.put('/api/links/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const index = linksCache.findIndex((l) => l.id === id);
-    if (index === -1) {
-      return res.status(404).json({ error: 'Link non trovato' });
-    }
-
     const { originalUrl, slug, targetMode, title, folder, project, description, imageUrl, utm } = req.body;
 
-    const existing = linksCache[index];
-    const platform = originalUrl ? detectPlatform(originalUrl) : existing.platform;
+    // 1. Look in linksCache first
+    let index = linksCache.findIndex((l) => l.id === id || l.slug.toLowerCase() === id.toLowerCase());
+    let existing: DeepLink | null = index !== -1 ? linksCache[index] : null;
 
-    // Check slug collision
-    if (slug && slug !== existing.slug) {
-      const collision = linksCache.some((l) => l.id !== id && l.slug === slug);
-      if (collision) {
-        return res.status(400).json({ error: 'Questo slug è già in uso' });
+    // 2. If not found in cache, look in Hostinger MySQL
+    if (!existing && mysqlPool) {
+      try {
+        await ensureMySQLTableExists();
+        const [rows]: any = await mysqlPool.query(
+          'SELECT * FROM deep_links WHERE id = ? OR LOWER(slug) = ? LIMIT 1',
+          [id, id.toLowerCase()]
+        );
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          let parsedData = r.data;
+          if (typeof parsedData === 'string') {
+            try { parsedData = JSON.parse(parsedData); } catch {}
+          }
+          let parsedStats = r.stats;
+          if (typeof parsedStats === 'string') {
+            try { parsedStats = JSON.parse(parsedStats); } catch {}
+          }
+          existing = (parsedData && typeof parsedData === 'object') ? parsedData : {
+            id: r.id || `link_${r.slug}`,
+            slug: r.slug,
+            originalUrl: r.original_url,
+            platform: r.platform || detectPlatform(r.original_url || ''),
+            targetMode: r.target_mode || 'smart',
+            title: r.title || 'Deep Link',
+            folder: r.folder || r.project || '',
+            project: r.folder || r.project || '',
+            description: r.description || '',
+            imageUrl: r.image_url || '',
+            userId: r.user_id || '',
+            clicks: Number(r.clicks || 0),
+            stats: parsedStats || {
+              iosClicks: 0,
+              androidClicks: 0,
+              desktopClicks: 0,
+              inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+              appOpens: 0,
+              browserEscapes: 0,
+            },
+            createdAt: r.created_at || new Date().toISOString(),
+            updatedAt: r.updated_at || new Date().toISOString(),
+          };
+          if (existing) {
+            linksCache.unshift(existing);
+            index = 0;
+          }
+        }
+      } catch (err) {
+        console.warn('MySQL lookup in PUT /api/links/:id error:', err);
       }
     }
 
+    if (!existing) {
+      return res.status(404).json({ error: 'Link non trovato' });
+    }
+
+    const cleanSlug = slug ? slugify(slug) : existing.slug;
+
+    // Check slug collision if slug is changing
+    if (cleanSlug && cleanSlug.toLowerCase() !== existing.slug.toLowerCase()) {
+      const collisionInCache = linksCache.some(
+        (l) => l.id !== existing!.id && l.slug.toLowerCase() === cleanSlug.toLowerCase()
+      );
+      if (collisionInCache) {
+        return res.status(400).json({ error: 'Questo slug è già in uso da un altro link' });
+      }
+
+      if (mysqlPool) {
+        try {
+          const [collisionRows]: any = await mysqlPool.query(
+            'SELECT id FROM deep_links WHERE LOWER(slug) = ? AND id != ? LIMIT 1',
+            [cleanSlug.toLowerCase(), existing.id]
+          );
+          if (Array.isArray(collisionRows) && collisionRows.length > 0) {
+            return res.status(400).json({ error: 'Questo slug è già in uso da un altro link' });
+          }
+        } catch {}
+      }
+    }
+
+    const normUrl = originalUrl ? normalizeUrl(originalUrl) : existing.originalUrl;
+    const platform = normUrl ? detectPlatform(normUrl) : existing.platform;
+
     const updated: DeepLink = {
       ...existing,
-      originalUrl: originalUrl || existing.originalUrl,
-      slug: slug || existing.slug,
+      originalUrl: normUrl,
+      slug: cleanSlug || existing.slug,
       platform,
       targetMode: targetMode || existing.targetMode,
       title: title !== undefined ? title : existing.title,
@@ -1099,8 +1174,92 @@ async function startServer() {
       updatedAt: new Date().toISOString(),
     };
 
-    linksCache[index] = updated;
+    if (index !== -1) {
+      linksCache[index] = updated;
+    } else {
+      linksCache.unshift(updated);
+    }
     saveLinks(linksCache);
+
+    // PERSIST TO HOSTINGER MYSQL
+    if (mysqlPool) {
+      try {
+        await ensureMySQLTableExists();
+        await mysqlPool.query(
+          `UPDATE deep_links SET
+            slug = ?,
+            original_url = ?,
+            platform = ?,
+            target_mode = ?,
+            title = ?,
+            folder = ?,
+            project = ?,
+            description = ?,
+            image_url = ?,
+            stats = ?,
+            data = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? OR LOWER(slug) = ?`,
+          [
+            updated.slug.toLowerCase(),
+            updated.originalUrl,
+            updated.platform,
+            updated.targetMode,
+            updated.title,
+            updated.folder || updated.project || '',
+            updated.folder || updated.project || '',
+            updated.description || '',
+            updated.imageUrl || '',
+            JSON.stringify(updated.stats || {}),
+            JSON.stringify(updated),
+            existing.id,
+            existing.slug.toLowerCase(),
+          ]
+        );
+      } catch (err) {
+        console.warn('MySQL update in PUT /api/links failed:', err);
+      }
+    }
+
+    // PERSIST TO POSTGRES / SUPABASE IF CONFIGURED
+    if (sqlClient) {
+      try {
+        await ensureTableExists();
+        await sqlClient`
+          UPDATE public.deep_links SET
+            slug = ${updated.slug.toLowerCase()},
+            original_url = ${updated.originalUrl},
+            platform = ${updated.platform},
+            target_mode = ${updated.targetMode},
+            title = ${updated.title},
+            folder = ${updated.folder || updated.project || ''},
+            description = ${updated.description || ''},
+            image_url = ${updated.imageUrl || ''},
+            data = ${JSON.stringify(updated)},
+            updated_at = NOW()
+          WHERE id = ${existing.id} OR LOWER(slug) = ${existing.slug.toLowerCase()};
+        `;
+      } catch (err) {
+        console.warn('Postgres update in PUT failed:', err);
+      }
+    } else if (supabase) {
+      await supabase
+        .from('deep_links')
+        .update({
+          slug: updated.slug.toLowerCase(),
+          original_url: updated.originalUrl,
+          platform: updated.platform,
+          target_mode: updated.targetMode,
+          title: updated.title,
+          folder: updated.folder || updated.project || '',
+          description: updated.description,
+          image_url: updated.imageUrl,
+          data: updated,
+          updated_at: new Date().toISOString(),
+        })
+        .or(`id.eq.${existing.id},slug.eq.${existing.slug.toLowerCase()}`);
+    }
+
     res.json(updated);
   });
 
@@ -1293,6 +1452,59 @@ async function startServer() {
           if (link) linksCache.unshift(link);
         }
       } catch {}
+    }
+
+    // Smart hyphen / underscore fallback: if not found, check with alternate separator (- <-> _)
+    if (!link && (slug.includes('-') || slug.includes('_'))) {
+      const alternateSlug = slug.includes('-') ? slug.replace(/-/g, '_') : slug.replace(/_/g, '-');
+      link = linksCache.find((l) => l.slug.toLowerCase() === alternateSlug.toLowerCase());
+      if (!link && mysqlPool) {
+        try {
+          const [rows]: any = await mysqlPool.query(
+            'SELECT * FROM deep_links WHERE LOWER(slug) = ? LIMIT 1',
+            [alternateSlug.toLowerCase()]
+          );
+          if (Array.isArray(rows) && rows.length > 0) {
+            const r = rows[0];
+            let parsedData = r.data;
+            if (typeof parsedData === 'string') {
+              try { parsedData = JSON.parse(parsedData); } catch {}
+            }
+            if (parsedData && typeof parsedData === 'object') {
+              link = parsedData;
+            } else {
+              let parsedStats = r.stats;
+              if (typeof parsedStats === 'string') {
+                try { parsedStats = JSON.parse(parsedStats); } catch {}
+              }
+              link = {
+                id: r.id || `link_${r.slug}`,
+                slug: r.slug,
+                originalUrl: r.original_url || r.originalUrl,
+                platform: r.platform || detectPlatform(r.original_url || ''),
+                targetMode: r.target_mode || 'smart',
+                title: r.title || 'Deep Link',
+                folder: r.folder || r.project || '',
+                project: r.folder || r.project || '',
+                description: r.description || '',
+                imageUrl: r.image_url || '',
+                createdAt: r.created_at || new Date().toISOString(),
+                updatedAt: r.updated_at || new Date().toISOString(),
+                clicks: Number(r.clicks || 0),
+                stats: parsedStats || {
+                  iosClicks: 0,
+                  androidClicks: 0,
+                  desktopClicks: 0,
+                  inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+                  appOpens: 0,
+                  browserEscapes: 0,
+                },
+              };
+            }
+            if (link) linksCache.unshift(link);
+          }
+        } catch {}
+      }
     }
 
     // 2. Base64 fallback if slug encodes a URL
@@ -1671,6 +1883,62 @@ async function startServer() {
     app.get('*', (req: Request, res: Response) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
+  }
+
+  // Preload links from MySQL into linksCache on startup
+  if (mysqlPool) {
+    try {
+      await ensureMySQLTableExists();
+      const [rows]: any = await mysqlPool.query(
+        'SELECT * FROM deep_links ORDER BY created_at DESC LIMIT 300'
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        linksCache = rows
+          .map((r: any) => {
+            let parsedData = r.data;
+            if (typeof parsedData === 'string') {
+              try { parsedData = JSON.parse(parsedData); } catch {}
+            }
+            if (parsedData && typeof parsedData === 'object') {
+              return {
+                ...parsedData,
+                userId: r.user_id || parsedData.userId || '',
+                clicks: typeof r.clicks === 'number' ? r.clicks : Number(r.clicks || 0),
+              };
+            }
+            let parsedStats = r.stats;
+            if (typeof parsedStats === 'string') {
+              try { parsedStats = JSON.parse(parsedStats); } catch {}
+            }
+            return {
+              id: r.id || `link_${r.slug}`,
+              slug: r.slug,
+              originalUrl: r.original_url || r.originalUrl,
+              platform: r.platform || detectPlatform(r.original_url || ''),
+              targetMode: r.target_mode || 'smart',
+              title: r.title || 'Deep Link',
+              folder: r.folder || r.project || '',
+              project: r.folder || r.project || '',
+              description: r.description || '',
+              imageUrl: r.image_url || '',
+              userId: r.user_id || '',
+              clicks: Number(r.clicks || 0),
+              stats: parsedStats || {
+                iosClicks: 0,
+                androidClicks: 0,
+                desktopClicks: 0,
+                inAppBreaks: { instagram: 0, tiktok: 0, facebook: 0, whatsapp: 0, other: 0 },
+                appOpens: 0,
+                browserEscapes: 0,
+              },
+            };
+          })
+          .filter((l: any) => l && !SAMPLE_SLUGS.has((l.slug || '').toLowerCase()));
+        saveLinks(linksCache);
+      }
+    } catch (err) {
+      console.warn('Initial MySQL load error:', err);
+    }
   }
 
   app.listen(PORT, () => {
