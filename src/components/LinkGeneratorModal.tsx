@@ -22,6 +22,7 @@ import {
   generateProtocols,
   normalizeUrl,
   slugify,
+  sanitizeSlugInput,
   getPlatformName,
 } from '../lib/deepLinkEngine';
 import { DeepLink, TargetMode } from '../types/deepLink';
@@ -274,11 +275,14 @@ export const LinkGeneratorModal: React.FC<LinkGeneratorModalProps> = ({
                     type="text"
                     placeholder="il-mio-link"
                     value={slug}
-                    onChange={(e) => setSlug(slugify(e.target.value))}
+                    onChange={(e) => setSlug(sanitizeSlugInput(e.target.value))}
+                    onBlur={() => setSlug((prev) => prev.replace(/^[-_]+/, '').replace(/[-_]+$/, ''))}
                     className="w-full py-2.5 pr-3 text-sm text-slate-900 dark:text-white bg-transparent focus:outline-none font-mono placeholder:text-slate-400 dark:placeholder:text-slate-600"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500">Lascia vuoto per generare automaticamente</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                  Usa lettere, numeri e trattini - (es. <code>scarpe-nike</code>). Lascia vuoto per generare automaticamente
+                </p>
               </div>
             </div>
 

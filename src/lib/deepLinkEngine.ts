@@ -304,6 +304,19 @@ export function getPlatformName(platform: SupportedPlatform): string {
 }
 
 /**
+ * Sanitizes user input in real-time as they type in the slug / alias field.
+ * Allows letters, numbers, hyphens (-), and underscores (_).
+ * Does NOT strip trailing hyphens so users can type words separated by hyphens (e.g. "mio-link").
+ */
+export function sanitizeSlugInput(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_]/g, '')
+    .slice(0, 80);
+}
+
+/**
  * Creates a clean slug from a string (e.g. "Mio Prodotto 2026" -> "mio-prodotto-2026")
  */
 export function slugify(text: string): string {
@@ -312,11 +325,11 @@ export function slugify(text: string): string {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '')
-    .slice(0, 40);
+    .replace(/[^a-z0-9\-_]+/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-_]+/, '')
+    .replace(/[-_]+$/, '')
+    .slice(0, 80);
 }
 
 /**
