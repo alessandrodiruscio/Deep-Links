@@ -8,7 +8,7 @@ interface HeaderProps {
   onTabChange: (tab: 'links' | 'analytics') => void;
   onOpenCreateModal: () => void;
   currentUser: UserProfile | null;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode?: 'login' | 'register') => void;
   onOpenUpgrade: () => void;
   onLogout: () => void;
 }
@@ -26,13 +26,6 @@ export const Header: React.FC<HeaderProps> = ({
   const { theme, toggleTheme } = useTheme();
 
   const isPro = currentUser?.plan === 'pro';
-
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   const handleLogoClick = () => {
     if (!currentUser) {
@@ -79,7 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Navigation Links: When LOGGED IN, show platform tabs */}
-          {currentUser ? (
+          {currentUser && (
             <nav className="hidden sm:flex items-center gap-1">
               <button
                 onClick={() => onTabChange('links')}
@@ -100,46 +93,6 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 Statistiche & Click
-              </button>
-            </nav>
-          ) : (
-            /* Navigation Links: When NOT logged in (Public Landing Page Anchor Links) */
-            <nav className="hidden md:flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => scrollToSection('come-funziona')}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-              >
-                Come Funziona
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection('confronto')}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-              >
-                Prima vs Dopo
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection('calcolatore')}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-              >
-                Calcolatore
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection('prezzi')}
-                className="px-3 py-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <Zap className="w-3 h-3 fill-current" />
-                <span>Prezzi</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection('faq')}
-                className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
-              >
-                FAQ
               </button>
             </nav>
           )}
@@ -232,13 +185,22 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             ) : (
-              <button
-                onClick={onOpenAuth}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-slate-900 dark:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors whitespace-nowrap shadow-sm cursor-pointer"
-              >
-                <User className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Accedi alla Piattaforma</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenAuth('login')}
+                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                >
+                  Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onOpenAuth('register')}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm shadow-indigo-600/20 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
+                >
+                  Sign up
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -274,48 +236,6 @@ export const Header: React.FC<HeaderProps> = ({
                 ⚡ PRO
               </button>
             )}
-          </div>
-        )}
-
-        {/* Mobile Navigation bar: When NOT logged in (Public Landing Page Anchor Links) */}
-        {!currentUser && (
-          <div className="flex md:hidden overflow-x-auto py-2 gap-2 border-t border-slate-200 dark:border-slate-800/60 no-scrollbar items-center text-xs">
-            <button
-              type="button"
-              onClick={() => scrollToSection('come-funziona')}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-900/60 shrink-0 cursor-pointer"
-            >
-              Come Funziona
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('confronto')}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-900/60 shrink-0 cursor-pointer"
-            >
-              Confronto
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('calcolatore')}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-900/60 shrink-0 cursor-pointer"
-            >
-              Calcolatore
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('prezzi')}
-              className="px-2.5 py-1 text-[11px] font-bold rounded-md text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 shrink-0 cursor-pointer flex items-center gap-1"
-            >
-              <Zap className="w-2.5 h-2.5 fill-current" />
-              <span>Prezzi</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollToSection('faq')}
-              className="px-2.5 py-1 text-[11px] font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-900/60 shrink-0 cursor-pointer"
-            >
-              FAQ
-            </button>
           </div>
         )}
       </div>

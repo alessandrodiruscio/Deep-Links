@@ -10,6 +10,7 @@ import { LinksTable } from './components/LinksTable';
 import { AnalyticsView } from './components/AnalyticsView';
 import { LinkGeneratorModal } from './components/LinkGeneratorModal';
 import { QrCodeModal } from './components/QrCodeModal';
+import { LinkStatsModal } from './components/LinkStatsModal';
 import { AuthModal } from './components/AuthModal';
 import { UpgradeProModal } from './components/UpgradeProModal';
 import { LandingPage } from './components/LandingPage';
@@ -73,6 +74,7 @@ function AppInner() {
   const [currentTab, setCurrentTab] = useState<'links' | 'analytics'>('links');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingLink, setEditingLink] = useState<DeepLink | null>(null);
+  const [statsModalLink, setStatsModalLink] = useState<DeepLink | null>(null);
   const [qrModalData, setQrModalData] = useState<{ url: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -223,35 +225,35 @@ function AppInner() {
         const serverLinks = await res.json();
         if (Array.isArray(serverLinks)) {
           setLinks((prevLinks) => {
-            // Clean server links by excluding any sample links
+            // Clean server links by excluding any sample or test links
             const cleanServerLinks = serverLinks
               .filter((s: any) => s && !PREDEFINED_SAMPLE_SLUGS.has((s.slug || '').toLowerCase()))
               .map(normalizeLink);
 
-            // Retain any custom user-created link already saved locally
+            // Retain only valid non-sample links locally
             const userCustomLinks = prevLinks.filter(
               (l) => !PREDEFINED_SAMPLE_SLUGS.has((l.slug || '').toLowerCase())
             );
 
-            // Find user links that exist locally in browser but not on server yet
+            // Only auto-sync pending links explicitly created offline (id starting with 'local_')
             const serverIdSet = new Set(cleanServerLinks.map((s) => s.id));
             const serverSlugSet = new Set(cleanServerLinks.map((s) => s.slug.toLowerCase()));
-            const missingOnServer = userCustomLinks.filter(
-              (ul) => !serverIdSet.has(ul.id) && !serverSlugSet.has((ul.slug || '').toLowerCase())
+            const offlineLinksToSync = userCustomLinks.filter(
+              (ul) => ul.id.startsWith('local_') && !serverIdSet.has(ul.id) && !serverSlugSet.has((ul.slug || '').toLowerCase())
             );
 
-            // Auto-sync them up to the server/database immediately!
-            if (missingOnServer.length > 0) {
-              syncLinksToDatabase(missingOnServer);
+            if (offlineLinksToSync.length > 0) {
+              syncLinksToDatabase(offlineLinksToSync);
             }
 
-            // Merge map: keyed by unique link id so updates correctly overwrite
+            // Server is the single source of truth for persistent links
             const map = new Map<string, DeepLink>();
             for (const item of cleanServerLinks) {
               map.set(item.id, item);
             }
+            // Retain any pending offline links that have not finished syncing yet
             for (const userLink of userCustomLinks) {
-              if (!map.has(userLink.id)) {
+              if (userLink.id.startsWith('local_') && !map.has(userLink.id)) {
                 map.set(userLink.id, userLink);
               }
             }
@@ -440,8 +442,8 @@ function AppInner() {
           setIsCreateModalOpen(true);
         }}
         currentUser={currentUser}
-        onOpenAuth={() => {
-          setAuthModalMode('login');
+        onOpenAuth={(mode?: 'login' | 'register') => {
+          setAuthModalMode(mode || 'login');
           setIsAuthModalOpen(true);
         }}
         onOpenUpgrade={() => setIsUpgradeModalOpen(true)}
@@ -546,10 +548,16 @@ function AppInner() {
                 }}
                 onDeleteLink={handleDeleteLink}
                 onOpenQrModal={handleOpenQrModal}
+                onOpenStatsModal={(link) => setStatsModalLink(link)}
               />
             )}
 
-            {currentTab === 'analytics' && <AnalyticsView links={links} />}
+            {currentTab === 'analytics' && (
+              <AnalyticsView
+                links={links}
+                onOpenLinkStats={(link) => setStatsModalLink(link)}
+              />
+            )}
           </>
         )}
       </main>
@@ -585,6 +593,18 @@ function AppInner() {
           new Set(links.map((l) => l.folder || l.project).filter(Boolean) as string[])
         )}
         customBaseUrl={customBaseUrl}
+        onOpenQrModal={handleOpenQrModal}
+      />
+
+      <LinkStatsModal
+        isOpen={!!statsModalLink}
+        link={statsModalLink}
+        customBaseUrl={customBaseUrl}
+        onClose={() => setStatsModalLink(null)}
+        onEditLink={(link) => {
+          setEditingLink(link);
+          setIsCreateModalOpen(true);
+        }}
         onOpenQrModal={handleOpenQrModal}
       />
 

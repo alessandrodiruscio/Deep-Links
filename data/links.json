@@ -11,7 +11,7 @@
     "description": "",
     "imageUrl": "",
     "userId": "usr_admin",
-    "clicks": 0,
+    "clicks": 1,
     "stats": {
       "iosClicks": 0,
       "androidClicks": 0,
@@ -39,7 +39,7 @@
     "description": "",
     "imageUrl": "",
     "userId": "usr_admin",
-    "clicks": 1,
+    "clicks": 2,
     "stats": {
       "iosClicks": 0,
       "androidClicks": 0,
@@ -55,118 +55,6 @@
       "browserEscapes": 0
     },
     "updatedAt": "2026-11-02T17:22:23.258Z"
-  },
-  {
-    "id": "link_1793102075368",
-    "slug": "youtube-ejn0",
-    "originalUrl": "https://youtu.be/fw7lugmh6cY?si=Jtw86df7VWyJ4ARq",
-    "platform": "youtube",
-    "targetMode": "smart",
-    "title": "YOUTUBE Deep Link",
-    "description": "",
-    "imageUrl": "",
-    "createdAt": "2026-10-30T11:07:14.564Z",
-    "updatedAt": "2026-10-30T11:07:14.564Z",
-    "clicks": 0,
-    "stats": {
-      "iosClicks": 0,
-      "androidClicks": 0,
-      "desktopClicks": 0,
-      "inAppBreaks": {
-        "instagram": 0,
-        "tiktok": 0,
-        "facebook": 0,
-        "whatsapp": 0,
-        "other": 0
-      },
-      "appOpens": 0,
-      "browserEscapes": 0
-    },
-    "userId": ""
-  },
-  {
-    "id": "link_1793119976032_ezs1",
-    "slug": "test-link",
-    "originalUrl": "https://google.com",
-    "platform": "generic",
-    "targetMode": "system_browser",
-    "title": "Google",
-    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
-    "imageUrl": "",
-    "createdAt": "2026-10-27T16:52:56.032Z",
-    "updatedAt": "2026-10-27T16:52:56.032Z",
-    "clicks": 1,
-    "stats": {
-      "iosClicks": 0,
-      "androidClicks": 0,
-      "desktopClicks": 1,
-      "inAppBreaks": {
-        "instagram": 0,
-        "tiktok": 0,
-        "facebook": 0,
-        "whatsapp": 0,
-        "other": 0
-      },
-      "appOpens": 0,
-      "browserEscapes": 1
-    },
-    "userId": ""
-  },
-  {
-    "id": "link_1793190734428_ug2p",
-    "slug": "test-curl",
-    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "platform": "youtube",
-    "targetMode": "smart",
-    "title": "Test Link",
-    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
-    "imageUrl": "",
-    "createdAt": "2026-10-28T12:32:14.428Z",
-    "updatedAt": "2026-10-28T12:32:14.428Z",
-    "clicks": 2,
-    "stats": {
-      "iosClicks": 1,
-      "androidClicks": 0,
-      "desktopClicks": 1,
-      "inAppBreaks": {
-        "instagram": 1,
-        "tiktok": 0,
-        "facebook": 0,
-        "whatsapp": 0,
-        "other": 0
-      },
-      "appOpens": 0,
-      "browserEscapes": 2
-    },
-    "userId": ""
-  },
-  {
-    "id": "link_1793199013605_wjb8",
-    "slug": "hostinger-test",
-    "originalUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    "platform": "youtube",
-    "targetMode": "smart",
-    "title": "Test Hostinger Link",
-    "description": "Link ottimizzato con bypass automatico di WebView e apertura nell’app nativa o browser di sistema.",
-    "imageUrl": "",
-    "createdAt": "2026-10-28T14:50:13.605Z",
-    "updatedAt": "2026-10-28T14:50:13.605Z",
-    "clicks": 0,
-    "stats": {
-      "iosClicks": 0,
-      "androidClicks": 0,
-      "desktopClicks": 0,
-      "inAppBreaks": {
-        "instagram": 0,
-        "tiktok": 0,
-        "facebook": 0,
-        "whatsapp": 0,
-        "other": 0
-      },
-      "appOpens": 0,
-      "browserEscapes": 0
-    },
-    "userId": ""
   },
   {
     "id": "link_1793638733638",
@@ -404,11 +292,11 @@
     "description": "",
     "imageUrl": "",
     "userId": "usr_admin",
-    "clicks": 2,
+    "clicks": 1,
     "stats": {
       "iosClicks": 0,
       "androidClicks": 0,
-      "desktopClicks": 2,
+      "desktopClicks": 0,
       "inAppBreaks": {
         "instagram": 0,
         "tiktok": 0,
@@ -417,7 +305,7 @@
         "other": 0
       },
       "appOpens": 0,
-      "browserEscapes": 2
+      "browserEscapes": 0
     },
     "updatedAt": "2026-11-02T17:22:52.067Z"
   },
@@ -433,7 +321,7 @@
     "description": "",
     "imageUrl": "",
     "userId": "usr_admin",
-    "clicks": 5,
+    "clicks": 7,
     "stats": {
       "iosClicks": 0,
       "androidClicks": 0,

@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Globe,
   Folder,
+  BarChart2,
 } from 'lucide-react';
 import { DeepLink, SupportedPlatform } from '../types/deepLink';
 import { getPlatformName } from '../lib/deepLinkEngine';
@@ -25,6 +26,7 @@ interface LinksTableProps {
   onEditLink: (link: DeepLink) => void;
   onDeleteLink: (id: string) => void;
   onOpenQrModal: (link: DeepLink) => void;
+  onOpenStatsModal: (link: DeepLink) => void;
 }
 
 export const LinksTable: React.FC<LinksTableProps> = ({
@@ -34,6 +36,7 @@ export const LinksTable: React.FC<LinksTableProps> = ({
   onEditLink,
   onDeleteLink,
   onOpenQrModal,
+  onOpenStatsModal,
 }) => {
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<string>('all');
@@ -271,10 +274,14 @@ export const LinksTable: React.FC<LinksTableProps> = ({
 
                   {/* Middle: Performance Metrics Chips */}
                   <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950/60 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                    <button
+                      onClick={() => onOpenStatsModal(link)}
+                      className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50/60 dark:bg-slate-950/60 dark:hover:bg-indigo-950/20 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-500/40 transition-all cursor-pointer group text-left"
+                      title="Visualizza statistiche dettagliate del link"
+                    >
                       {/* Total Clicks */}
                       <div className="text-center">
-                        <div className="text-base font-bold text-slate-900 dark:text-white leading-tight font-mono">
+                        <div className="text-base font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 leading-tight font-mono transition-colors">
                           {clicks}
                         </div>
                         <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-wider font-semibold">
@@ -293,10 +300,19 @@ export const LinksTable: React.FC<LinksTableProps> = ({
                           Bypass
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Action buttons */}
                     <div className="flex items-center gap-1">
+                      {/* View Stats Modal */}
+                      <button
+                        onClick={() => onOpenStatsModal(link)}
+                        className="p-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors cursor-pointer"
+                        title="Visualizza statistiche dettagliate"
+                      >
+                        <BarChart2 className="w-4 h-4" />
+                      </button>
+
                       {/* QR Modal */}
                       <button
                         onClick={() => onOpenQrModal(link)}

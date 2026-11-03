@@ -116,6 +116,13 @@ interface DeepLink {
     appOpens: number;
     browserEscapes: number;
   };
+  utm?: {
+    source?: string;
+    medium?: string;
+    campaign?: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 }
 // User-created links cache (Persisted in globalThis across serverless warm invocations)
 const globalAny: any = globalThis;
@@ -134,6 +141,28 @@ function detectPlatform(url: string): string {
   if (clean.includes('linkedin.com')) return 'linkedin';
   if (clean.includes('twitter.com') || clean.includes('x.com')) return 'twitter';
   return 'generic';
+}
+
+function normalizeUrl(rawUrl: string): string {
+  let url = (rawUrl || '').trim();
+  if (!url) return '';
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('spotify:')) {
+    url = 'https://' + url;
+  }
+  return url;
+}
+
+function slugify(text: string): string {
+  return (text || '')
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_]+/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-_]+/, '')
+    .replace(/[-_]+$/, '')
+    .slice(0, 80);
 }
 
 function computeProtocols(url: string, platform: string, mode: string) {
@@ -573,14 +602,19 @@ async function getSupabaseLinks(userId?: string): Promise<DeepLink[] | null> {
 
 async function getSupabaseLinkBySlug(slug: string): Promise<DeepLink | null> {
   const cleanSlug = slug.trim().toLowerCase();
+  const alternateSlug = cleanSlug.includes('-')
+    ? cleanSlug.replace(/-/g, '_')
+    : cleanSlug.includes('_')
+    ? cleanSlug.replace(/_/g, '-')
+    : '';
 
   // 1. Try Hostinger MySQL
   if (mysqlPool) {
     try {
       await ensureMySQLTableExists();
       const [rows]: any = await mysqlPool.query(
-        'SELECT * FROM deep_links WHERE LOWER(slug) = ? LIMIT 1',
-        [cleanSlug]
+        'SELECT * FROM deep_links WHERE LOWER(slug) = ? OR LOWER(slug) = ? LIMIT 1',
+        [cleanSlug, alternateSlug || cleanSlug]
       );
       if (Array.isArray(rows) && rows.length > 0) {
         const r = rows[0];
@@ -881,6 +915,7 @@ export default async function handler(req: any, res: any) {
   const isSamcartConfig = requestPath.includes('samcart-config');
   const isSync = requestPath.includes('sync') || (req.method === 'POST' && Array.isArray(req.body));
   const isCreateLink = req.method === 'POST' && !isSync && !isAuthLogin && !isAuthRegister && !isSamcartWebhook && !isSamcartConfig && (requestPath.includes('links') || (req.body && req.body.originalUrl));
+  const isUpdateLink = req.method === 'PUT' && requestPath.includes('links');
   const isDeleteLink = req.method === 'DELETE';
   const isListLinks = req.method === 'GET' && !query.slug && !requestPath.includes('/l/') && !isAuthMe && !isSamcartConfig && !isDatabaseStatus && (requestPath.includes('links') || rawUrl === '/api' || rawUrl === '/api/' || apiRoute === 'links');
 
@@ -1267,7 +1302,17 @@ export default async function handler(req: any, res: any) {
     const authUser = await getAuthUser(req);
     const userIdFilter = authUser && authUser.email !== 'alessandro.diruscio@gmail.com' ? authUser.id : undefined;
 
-    const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+    const SAMPLE_SLUGS = new Set([
+      'mio-ecommerce',
+      'amazon-tech',
+      'canale-youtube',
+      'playlist-focus',
+      'youtube-ejn0',
+      'test-link',
+      'test-curl',
+      'hostinger-test',
+      'test-link-edit',
+    ]);
 
     // 1. Try PostgreSQL, Supabase or Hostinger MySQL
     if (sqlClient || supabase || mysqlPool) {
@@ -1439,6 +1484,108 @@ export default async function handler(req: any, res: any) {
     return res.status(201).json(newLink);
   }
 
+  // Handle API route: PUT /api/links/:id
+  if (isUpdateLink) {
+    res.setHeader('Content-Type', 'application/json');
+    const id =
+      (query.id as string) ||
+      (apiRoute.split('links/')[1] || rawUrl.split('/api/links/')[1])?.split('?')[0]?.replace(/^\//, '');
+
+    const body = req.body || {};
+    const { originalUrl, slug: newSlug, targetMode, title, folder, project, description, imageUrl, utm } = body;
+
+    let existing: DeepLink | null = LINKS_CACHE.find((l) => l.id === id || l.slug.toLowerCase() === (id || '').toLowerCase()) || null;
+
+    if (!existing && (sqlClient || supabase || mysqlPool)) {
+      if (id) {
+        existing = await getSupabaseLinkBySlug(id);
+      }
+    }
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Link non trovato' });
+    }
+
+    const cleanSlug = newSlug ? slugify(newSlug) : existing.slug;
+    const normUrl = originalUrl ? normalizeUrl(originalUrl) : existing.originalUrl;
+    const platform = normUrl ? detectPlatform(normUrl) : existing.platform;
+
+    const updated: DeepLink = {
+      ...existing,
+      originalUrl: normUrl,
+      slug: cleanSlug || existing.slug,
+      platform,
+      targetMode: targetMode || existing.targetMode,
+      title: title !== undefined ? title : existing.title,
+      folder: folder !== undefined ? folder : (project !== undefined ? project : existing.folder),
+      project: folder !== undefined ? folder : (project !== undefined ? project : existing.project),
+      description: description !== undefined ? description : existing.description,
+      imageUrl: imageUrl !== undefined ? imageUrl : existing.imageUrl,
+      utm: utm !== undefined ? utm : existing.utm,
+      updatedAt: new Date().toISOString(),
+    } as any;
+
+    const cacheIdx = LINKS_CACHE.findIndex((l) => l.id === existing!.id || l.slug.toLowerCase() === existing!.slug.toLowerCase());
+    if (cacheIdx !== -1) {
+      LINKS_CACHE[cacheIdx] = updated;
+    } else {
+      LINKS_CACHE.unshift(updated);
+    }
+
+    // Persist to Hostinger MySQL
+    if (mysqlPool) {
+      try {
+        await ensureMySQLTableExists();
+        await mysqlPool.query(
+          `UPDATE deep_links SET
+            slug = ?,
+            original_url = ?,
+            platform = ?,
+            target_mode = ?,
+            title = ?,
+            folder = ?,
+            project = ?,
+            description = ?,
+            image_url = ?,
+            stats = ?,
+            data = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ? OR LOWER(slug) = ?`,
+          [
+            updated.slug.toLowerCase(),
+            updated.originalUrl,
+            updated.platform,
+            updated.targetMode,
+            updated.title,
+            updated.folder || updated.project || '',
+            updated.folder || updated.project || '',
+            updated.description || '',
+            updated.imageUrl || '',
+            JSON.stringify(updated.stats || {}),
+            JSON.stringify(updated),
+            existing.id,
+            existing.slug.toLowerCase(),
+          ]
+        );
+      } catch (err) {
+        console.warn('MySQL update in Vercel api error:', err);
+      }
+    }
+
+    if (sqlClient || supabase) {
+      await saveSupabaseLink(updated);
+    }
+
+    if (KV_URL && KV_TOKEN) {
+      try {
+        await kvSet(`deepdirect:slug:${updated.slug.toLowerCase()}`, updated);
+        await kvSet(`deepdirect:id:${updated.id}`, updated);
+      } catch {}
+    }
+
+    return res.status(200).json(updated);
+  }
+
   // Handle API route: DELETE /api/links/:id
   if (isDeleteLink) {
     res.setHeader('Content-Type', 'application/json');
@@ -1472,9 +1619,16 @@ export default async function handler(req: any, res: any) {
 
   // If a slug is requested, render the Deep Link Gateway
   if (slug) {
+    const cleanSlug = slug.trim().toLowerCase();
+    const alternateSlug = cleanSlug.includes('-')
+      ? cleanSlug.replace(/-/g, '_')
+      : cleanSlug.includes('_')
+      ? cleanSlug.replace(/_/g, '-')
+      : '';
+
     // 1. Look in memory cache
     let link: DeepLink | null | undefined = LINKS_CACHE.find(
-      (l) => l.slug.toLowerCase() === slug.toLowerCase()
+      (l) => l.slug.toLowerCase() === cleanSlug || (alternateSlug && l.slug.toLowerCase() === alternateSlug)
     );
 
     // 2. Look in Hostinger MySQL / Supabase / PostgreSQL database

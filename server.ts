@@ -236,7 +236,17 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const SAMPLE_SLUGS = new Set(['mio-ecommerce', 'amazon-tech', 'canale-youtube', 'playlist-focus']);
+const SAMPLE_SLUGS = new Set([
+  'mio-ecommerce',
+  'amazon-tech',
+  'canale-youtube',
+  'playlist-focus',
+  'youtube-ejn0',
+  'test-link',
+  'test-curl',
+  'hostinger-test',
+  'test-link-edit',
+]);
 
 function loadLinks(): DeepLink[] {
   try {

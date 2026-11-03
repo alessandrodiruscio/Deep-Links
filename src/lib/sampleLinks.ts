@@ -9,4 +9,9 @@ export const PREDEFINED_SAMPLE_SLUGS = new Set([
   'amazon-tech',
   'canale-youtube',
   'playlist-focus',
+  'youtube-ejn0',
+  'test-link',
+  'test-curl',
+  'hostinger-test',
+  'test-link-edit',
 ]);
