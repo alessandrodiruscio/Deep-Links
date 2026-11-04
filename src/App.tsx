@@ -566,7 +566,7 @@ function AppInner() {
       <footer className="mt-auto border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div>
-            <span>DeepDirect Engine</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">smartjump Engine</span>
             <span className="mx-2" aria-hidden="true">·</span>
             <span>Bypass WebView & Deep Linking Nativo</span>
             <span className="mx-2" aria-hidden="true">·</span>

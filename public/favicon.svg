@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Instagram official gradient -->
+    <linearGradient id="sj-ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#833ab4" />
+      <stop offset="30%" stop-color="#c13584" />
+      <stop offset="60%" stop-color="#e1306c" />
+      <stop offset="85%" stop-color="#fd1d1d" />
+      <stop offset="100%" stop-color="#fcb045" />
+    </linearGradient>
+
+    <!-- Gloss highlight -->
+    <linearGradient id="sj-gloss" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <filter id="sj-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#e1306c" flood-opacity="0.4" />
+    </filter>
+  </defs>
+
+  <!-- Main squircle badge -->
+  <rect x="6" y="6" width="88" height="88" rx="24" fill="url(#sj-ig-grad)" filter="url(#sj-glow)" />
+
+  <!-- Gloss overlay -->
+  <rect x="6" y="6" width="88" height="44" rx="24" fill="url(#sj-gloss)" />
+
+  <!-- Emblem: Link Loop + Launching Jump Arrow -->
+  <g stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Base Link -->
+    <path d="M42 58 C36 64 26 64 20 58 C14 52 14 42 20 36 L28 28 C34 22 44 22 50 28" stroke-width="7" fill="none" opacity="0.95" />
+    <!-- Jump Arc -->
+    <path d="M38 52 C44 42 54 36 68 32" stroke-width="7.5" fill="none" />
+    <!-- Jump Arrow Head -->
+    <path d="M52 28 L74 26 L72 48" stroke-width="7.5" fill="none" />
+    <!-- Jump Speed Trail -->
+    <line x1="32" y1="68" x2="48" y2="52" stroke-width="6" stroke-dasharray="2 4" opacity="0.8" />
+  </g>
+
+  <!-- Sparkle Star -->
+  <path d="M80 18 L82 23 L87 25 L82 27 L80 32 L78 27 L73 25 L78 23 Z" fill="#ffffff" opacity="0.95" />
+</svg>

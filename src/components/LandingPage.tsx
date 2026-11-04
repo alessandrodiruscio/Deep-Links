@@ -16,7 +16,12 @@ import {
   MousePointerClick,
   Smartphone,
   RefreshCw,
-  Copy
+  Copy,
+  Sparkles,
+  Link2,
+  TrendingUp,
+  Globe,
+  Share2
 } from 'lucide-react';
 import { UserProfile } from '../types/deepLink';
 
@@ -164,12 +169,12 @@ const CAROUSEL_APPS_ROW2: AppBrand[] = [
   {
     name: 'Shopify / Safari',
     badge: 'Apple Pay Ready',
-    lightBg: 'bg-lime-50/70',
-    lightBorder: 'border-lime-200',
-    darkBg: 'from-lime-500/20 to-emerald-500/10',
-    darkBorder: 'border-lime-500/30',
+    lightBg: 'bg-rose-50/70',
+    lightBorder: 'border-rose-200',
+    darkBg: 'from-rose-500/20 to-pink-500/10',
+    darkBorder: 'border-rose-500/30',
     svg: (
-      <svg className="w-6 h-6 text-lime-600 dark:text-lime-400" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-6 h-6 text-pink-600 dark:text-pink-400" viewBox="0 0 24 24" fill="currentColor">
         <path d="M15.447 2.164a3.642 3.642 0 0 0-.85 2.502c.032.222.094.437.185.641a3.527 3.527 0 0 0 2.55-1.31 3.545 3.545 0 0 0 .848-2.457 3.398 3.398 0 0 0-2.733.624zm4.498 7.032c-.068-.052-1.442-.835-1.428-2.477.017-1.954 1.588-2.888 1.66-2.934-.913-1.336-2.336-1.52-2.842-1.542-1.21-.124-2.366.712-2.981.712-.614 0-1.572-.693-2.584-.674-1.332.02-2.56.774-3.244 1.966-1.383 2.399-.353 5.949.99 7.892.659.949 1.441 2.011 2.467 1.972 1-.038 1.378-.633 2.583-.633 1.206 0 1.548.633 2.584.613 1.071-.019 1.748-.962 2.404-1.918.761-1.109 1.074-2.181 1.092-2.237-.024-.01-.301-.12-1.602-.74z" />
       </svg>
     ),
@@ -184,32 +189,6 @@ const CAROUSEL_APPS_ROW2: AppBrand[] = [
     svg: (
       <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-      </svg>
-    ),
-  },
-  {
-    name: 'Netflix',
-    badge: 'Serie TV & Film',
-    lightBg: 'bg-red-50/70',
-    lightBorder: 'border-red-200',
-    darkBg: 'from-red-600/20 to-red-800/10',
-    darkBorder: 'border-red-600/30',
-    svg: (
-      <svg className="w-6 h-6 text-red-600 dark:text-red-500" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M5.398 0v24L9.8 14.733V0H5.398zm8.799 0v9.267L18.6 0h-4.403zm-4.402 14.733L14.197 24h4.405V9.267l-8.804 5.466z" />
-      </svg>
-    ),
-  },
-  {
-    name: 'Airbnb',
-    badge: 'Prenotazioni',
-    lightBg: 'bg-rose-50/70',
-    lightBorder: 'border-rose-200',
-    darkBg: 'from-rose-500/20 to-pink-600/10',
-    darkBorder: 'border-rose-500/30',
-    svg: (
-      <svg className="w-6 h-6 text-rose-500 dark:text-rose-400" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0c-4.1 0-7.4 3.3-7.4 7.4 0 5.4 6.8 14.4 7.1 14.8.2.2.5.2.7 0 .3-.4 7.1-9.4 7.1-14.8C19.4 3.3 16.1 0 12 0zm0 10.9c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z" />
       </svg>
     ),
   },
@@ -274,12 +253,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onOpenUpgrade,
   currentUser,
 }) => {
-  // Before vs After interactive phone comparison state
-  const [activeComparisonTab, setActiveComparisonTab] = useState<'both' | 'without' | 'with'>('both');
+  // Interactive Quick Demo input (openup.to hero signature)
+  const [demoUrl, setDemoUrl] = useState<string>('https://amazon.it/dp/B0CX23V6PT');
 
-  // ROI Calculator state (taap.it style)
+  // ROI Calculator state (openup.to / taap.it style)
   const [monthlyClicks, setMonthlyClicks] = useState<number>(5000);
-  const [avgOrderValue, setAvgOrderValue] = useState<number>(30); // in €
+  const [avgOrderValue, setAvgOrderValue] = useState<number>(35); // in €
 
   // FAQ state
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -289,192 +268,201 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Calculator calculations
   const trafficLostPercent = 65; // ~65% of traffic lost in in-app browser
   const lostClicks = Math.round((monthlyClicks * trafficLostPercent) / 100);
-  const estimatedConversionRate = 0.035; // 3.5% conversion in native app vs 0.8% in in-app
+  const estimatedConversionRate = 0.038; // 3.8% conversion in native app vs 0.8% in in-app
   const recoveredSales = Math.round(lostClicks * estimatedConversionRate);
   const recoveredRevenue = recoveredSales * avgOrderValue;
 
+  const handleHeroSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentUser) {
+      onOpenCreateModal();
+    } else {
+      onOpenAuth();
+    }
+  };
+
   const faqs = [
     {
-      q: "Cos'è la 'Trappola del Browser In-App' (In-App WebView) di Instagram e TikTok?",
-      a: "Quando un utente tocca un link inserito nella tua Bio, nelle Storie o nei post di Instagram, TikTok o Facebook, l'applicazione non apre Safari o Chrome, ma un mini-browser interno (denominato WebView). In questo ambiente isolato l'utente NON è autenticato con il suo account Amazon, YouTube o Google, non ha memorizzato Apple Pay o le carte di credito e deve inserire password complesse. Risultato? Oltre il 65-75% degli utenti abbandona la pagina senza acquistare, iscriversi o interagire."
+      q: "Cos'è la 'Trappola del Browser In-App' di Instagram?",
+      a: "Quando un tuo follower clicca su un link nella tua Bio o nelle Storie di Instagram, non si apre il browser di sistema o l'app nativa, ma un visualizzatore interno isolato (WebView). In questo ambiente l'utente NON è autenticato sui suoi account (come Amazon, YouTube o Spotify), non ha Apple Pay o Google Pay e deve digitare password lunghe e complesse. Oltre il 70% degli utenti abbandona all'istante senza comprare o iscriversi."
     },
     {
-      q: "Come risolve il problema la tecnologia di DeepDirect?",
-      a: "DeepDirect rileva istantaneamente il sistema operativo (iOS di Apple o Android di Google) e l'app social di provenienza in meno di 200 millisecondi. Tramite protocolli avanzati di Universal Links e Android Intent, forza il sistema operativo ad aprire direttamente l'app ufficiale già installata sullo smartphone dell'utente. Qui l'utente è già loggato e può concludere l'acquisto con 1-Click Buy o Apple Pay senza alcuna frizione."
+      q: "Come funziona la tecnologia di smartjump?",
+      a: "smartjump rileva istantaneamente il sistema operativo (iOS di Apple o Android) e l'app di provenienza in meno di 200 millisecondi. Tramite protocolli ufficiali di Universal Links e Android Intent, forza lo smartphone ad aprire direttamente l'app nativa ufficiale già installata sul dispositivo, dove l'utente è già loggato e conclude l'acquisto con 1-Click Buy o Apple Pay."
     },
     {
-      q: "Cosa succede se l'utente non ha l'app specifica installata sul telefono?",
-      a: "Nessun errore e nessuna schermata bloccata! DeepDirect include una tecnologia di Smart Fallback intelligente: se l'applicazione non è presente, forza l'uscita dalla WebView aprendo il vero browser di sistema predefinito (Safari su iPhone, Google Chrome su Android). In questo modo le credenziali salvate nel portachiavi e Apple Pay restano perfettamente accessibili."
+      q: "Cosa succede se il follower non ha l'app installata sul telefono?",
+      a: "Nessun errore! smartjump adotta uno Smart Fallback intelligente: se l'app non è presente, forza l'uscita dalla WebView aprendo Safari su iPhone o Chrome su Android, dove l'utente ritrova le sue password memorizzate e il portachiavi iCloud."
     },
     {
-      q: "I cookie di affiliazione (es. Amazon Associates) e i parametri UTM vengono conservati?",
-      a: "Sì, al 100%. DeepDirect preserva integralmente ogni parametro UTM, tag di affiliazione (come tag=tuoid-21 per Amazon), query string e parametri di tracking per le campagne pubblicitarie Meta Ads o Google Ads. Non perderai mai più una commissione di vendita."
+      q: "I cookie di affiliazione Amazon Associates e i parametri UTM sono salvi?",
+      a: "Sì, al 100%. smartjump trasferisce e preserva integralmente ogni parametro UTM, query string e tag di affiliazione (come tag=tuoid-21 per Amazon). Tutte le commissioni vengono regolarmente accreditate sul tuo conto affiliato."
     },
     {
-      q: "È conforme alle regole e linee guida di Instagram, TikTok e Amazon?",
-      a: "Assolutamente sì. DeepDirect sfrutta i protocolli standard ufficiali raccomandati da Apple (Universal Links) e Google (App Links & Intents) per il routing delle applicazioni su smartphone. Non effettua alcun hacking o scraping illecito ed è conforme al 100% con le norme di Meta e Amazon Associates."
+      q: "È conforme alle regole e alle norme di Meta e Amazon?",
+      a: "Assolutamente sì. smartjump si basa sugli standard ufficiali di Apple (Universal Links) e Google (App Links), raccomandati per il routing nativo mobile. Non effettua alcun exploit o scraping e rispetta al 100% le linee guida di Meta e Amazon Associates."
     },
     {
       q: "Posso utilizzare il mio Dominio Personalizzato (es. link.miosito.it)?",
-      a: "Certamente! Nel piano PRO puoi collegare il tuo sottodominio aziendale (es. link.iltuobrand.com o go.iltuonome.it) aggiungendo un semplice record CNAME nel pannello DNS del tuo hosting. In questo modo rafforzi l'autorevolezza del tuo marchio e aumenti la fiducia dei tuoi follower al click."
+      a: "Certamente! Nel Piano PRO puoi collegare il tuo dominio o sottodominio aziendale (es. go.iltuonome.it o link.brand.com) con un semplice CNAME DNS, garantendo la massima credibilità e CTR tra i tuoi follower."
     },
     {
-      q: "Come funziona l'attivazione del Piano PRO tramite SamCart?",
-      a: "L'attivazione è completamente istantanea e automatizzata. Cliccando su 'Passa a PRO' verrai indirizzato alla checkout page sicura su SamCart. Non appena il pagamento va a buon fine, il webhook ufficiale di SamCart aggiorna il tuo account sbloccando all'istante link e click illimitati, senza alcun intervento manuale."
+      q: "Come avviene l'attivazione del Piano PRO tramite SamCart?",
+      a: "L'attivazione è istantanea e completamente automatica: completando il pagamento su SamCart, il webhook ufficiale aggiorna il tuo account sbloccando subito link illimitati e tutte le funzioni avanzate, senza alcuna attesa."
     },
     {
-      q: "Qual è la differenza esatta tra Piano Free e Piano PRO?",
-      a: "Il Piano Free è gratuito per sempre e ti permette di gestire fino a 5 Deep Link attivi contemporaneamente con tutte le funzioni di bypass e redirect. Il Piano PRO sblocca l'accesso illimitato: infiniti link, click illimitati senza quote mensili, dominio personalizzato con branding proprietario e assistenza prioritaria."
+      q: "Qual è la differenza esatta tra il Piano Free e il Piano PRO?",
+      a: "Il Piano Free è gratuito per sempre e consente di gestire fino a 5 deep link con bypass completo e redirect nativo. Il Piano PRO offre link illimitati, click e traffico illimitati, dominio personalizzato con branding proprietario e supporto prioritario."
     }
   ];
 
   return (
     <div className="space-y-24 py-4 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* =========================================================================
-          HERO SECTION (Light style default, Dark style supported)
+          HERO SECTION (openup.to aesthetic with Instagram colors)
          ========================================================================= */}
-      <section className="relative overflow-hidden pt-4 pb-4">
-        {/* Ambient atmospheric radial glows */}
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 w-[720px] h-[380px] bg-gradient-to-tr from-emerald-500/10 via-teal-500/10 to-indigo-500/10 dark:from-emerald-500/15 dark:via-teal-500/15 dark:to-indigo-600/15 blur-3xl pointer-events-none rounded-full" />
-        <div className="absolute -top-10 right-10 w-80 h-80 bg-emerald-500/5 dark:bg-emerald-500/10 blur-2xl pointer-events-none rounded-full" />
+      <section className="relative overflow-hidden pt-6 pb-6">
+        {/* Ambient Instagram Gradient Glows */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[760px] h-[400px] bg-gradient-to-tr from-[#833ab4]/15 via-[#fd1d1d]/12 to-[#fcb045]/15 blur-3xl pointer-events-none rounded-full" />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-pink-500/10 blur-2xl pointer-events-none rounded-full" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-600/10 blur-2xl pointer-events-none rounded-full" />
 
         <div className="relative max-w-4xl mx-auto text-center space-y-6">
-          {/* Eyebrow badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/25 text-emerald-700 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider shadow-sm">
-            <Flame className="w-3.5 h-3.5 fill-current" />
-            <span>La Piattaforma #1 di Smart Deep Linking per Creator & Affiliati</span>
+          {/* Eyebrow badge (openup.to style) */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-pink-50 dark:bg-pink-950/40 border border-pink-200 dark:border-pink-500/30 text-pink-700 dark:text-pink-300 text-xs font-semibold uppercase tracking-wider shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse" />
+            <span>Smart Deep Linking per Instagram & Social</span>
           </div>
 
-          {/* Main Title */}
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.12]">
+          {/* Main Title with Instagram Gradient */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.08]">
             Fai aprire i tuoi link{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 dark:from-emerald-400 dark:via-teal-300 dark:to-cyan-400">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#833ab4] via-[#e1306c] to-[#fd1d1d]">
               direttamente nell'App
             </span>{' '}
-            invece che nel browser dei social.
+            invece che nel browser di Instagram.
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Bypassa il mini-browser interno di <strong className="text-slate-900 dark:text-white">Instagram, TikTok e Facebook</strong>.
-            Fai atterrare i tuoi follower nell'app ufficiale (Amazon, YouTube, Spotify) dove sono già loggati con il loro account e <strong className="text-slate-900 dark:text-white">Apple Pay a 1 tocco</strong>.
+          <p className="text-base sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Bypassa il mini-browser interno che uccide le conversioni. Fai atterrare i tuoi follower direttamente su{' '}
+            <strong className="text-slate-900 dark:text-white">Amazon, YouTube, Spotify e TikTok</strong> dove sono già loggati con{' '}
+            <strong className="text-slate-900 dark:text-white">Apple Pay e 1-Click Buy</strong>.
           </p>
 
-          {/* Hero CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <button
-              onClick={onOpenCreateModal}
-              className="w-full sm:w-auto px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-xl shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 cursor-pointer"
+          {/* Interactive URL Generator Bar (openup.to signature) */}
+          <div className="max-w-2xl mx-auto pt-2">
+            <form
+              onSubmit={handleHeroSubmit}
+              className="p-2 sm:p-2.5 bg-white dark:bg-slate-900 border-2 border-pink-200 dark:border-pink-500/30 rounded-2xl shadow-xl shadow-pink-500/10 flex flex-col sm:flex-row items-center gap-2"
             >
-              <Zap className="w-4 h-4 fill-current" />
-              <span>Crea il Tuo Primo Link Gratis</span>
-            </button>
+              <div className="flex items-center gap-2.5 px-3 w-full text-slate-400">
+                <Link2 className="w-5 h-5 text-pink-500 shrink-0" />
+                <input
+                  type="url"
+                  required
+                  value={demoUrl}
+                  onChange={(e) => setDemoUrl(e.target.value)}
+                  placeholder="Incolla qui qualsiasi link (Amazon, YouTube, Spotify...)"
+                  className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                />
+              </div>
 
-            {!isPro ? (
               <button
-                onClick={onOpenUpgrade}
-                className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 dark:bg-slate-900/90 dark:hover:bg-slate-800 text-slate-800 dark:text-white font-semibold text-sm rounded-xl border border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                type="submit"
+                className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-pink-500/25 transition-all hover:scale-[1.02] flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer shrink-0"
               >
-                <span>Passa a PRO Illimitato (SamCart)</span>
-                <ExternalLink className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <Zap className="w-4 h-4 fill-current" />
+                <span>Crea Deep Link Gratis</span>
               </button>
-            ) : (
-              <button
-                onClick={onGoToDashboard}
-                className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-semibold text-sm rounded-xl border border-emerald-500/40 transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>Accedi alla Dashboard PRO</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+            </form>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-2 text-center">
+              Prova subito: incolla qualsiasi link e scopri l'apertura istantanea in-app.
+            </p>
           </div>
 
           {/* Social Proof Mini Badges */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
+          <div className="pt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-600 dark:text-slate-400">
             <span className="flex items-center gap-1.5 font-medium">
-              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Nessuna carta richiesta per iniziare
+              <Check className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" /> Nessuna carta di credito richiesta
             </span>
             <span className="flex items-center gap-1.5 font-medium">
-              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Compatibile iOS 17/18 & Android
+              <Check className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" /> +310% conversioni medie
             </span>
             <span className="flex items-center gap-1.5 font-medium">
-              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Cookie di affiliazione 100% salvi
+              <Check className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400" /> Cookie di affiliazione 100% protetti
             </span>
           </div>
         </div>
 
         {/* =========================================================================
-            CONTINUOUS INFINITE MOVING LOGO CAROUSEL (Like openup.to)
+            CONTINUOUS INFINITE MOVING LOGO CAROUSEL (openup.to style)
            ========================================================================= */}
         <div className="mt-14 relative w-full overflow-hidden py-4">
           <div className="text-center mb-5">
-            <p className="text-xs uppercase tracking-widest font-semibold text-slate-500 dark:text-slate-400">
+            <p className="text-xs uppercase tracking-widest font-bold text-pink-600 dark:text-pink-400">
               Supporto Nativo per Oltre 20+ Applicazioni & Qualsiasi Store
             </p>
           </div>
 
-          {/* Gradient fade masks on left and right for seamless edge appearance */}
+          {/* Edge gradient masks */}
           <div className="pointer-events-none absolute inset-y-0 left-0 w-24 sm:w-40 bg-gradient-to-r from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 z-10" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-24 sm:w-40 bg-gradient-to-l from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 z-10" />
 
-          {/* Track 1: Moving left continuously */}
+          {/* Track 1: Moving left */}
           <div className="flex overflow-hidden py-2 select-none">
             <div className="animate-marquee flex items-center gap-4">
-              {/* First loop of row 1 */}
               {CAROUSEL_APPS_ROW1.map((app, i) => (
                 <div
                   key={`r1-a-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900/90 dark:bg-gradient-to-br ${app.darkBg} border border-slate-200 dark:border-slate-800 ${app.lightBorder} rounded-2xl shadow-sm hover:shadow-md dark:shadow-lg backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
                 >
                   <div className="shrink-0">{app.svg}</div>
                   <div className="text-left">
                     <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">{app.badge}</div>
+                    <div className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold">{app.badge}</div>
                   </div>
                 </div>
               ))}
-              {/* Duplicate loop of row 1 for seamless infinite looping */}
               {CAROUSEL_APPS_ROW1.map((app, i) => (
                 <div
                   key={`r1-b-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900/90 dark:bg-gradient-to-br ${app.darkBg} border border-slate-200 dark:border-slate-800 ${app.lightBorder} rounded-2xl shadow-sm hover:shadow-md dark:shadow-lg backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
                 >
                   <div className="shrink-0">{app.svg}</div>
                   <div className="text-left">
                     <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">{app.badge}</div>
+                    <div className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold">{app.badge}</div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Track 2: Moving right continuously (reverse) */}
+          {/* Track 2: Moving right */}
           <div className="flex overflow-hidden py-2 select-none mt-2">
             <div className="animate-marquee-reverse flex items-center gap-4">
-              {/* First loop of row 2 */}
               {CAROUSEL_APPS_ROW2.map((app, i) => (
                 <div
                   key={`r2-a-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900/90 dark:bg-gradient-to-br ${app.darkBg} border border-slate-200 dark:border-slate-800 ${app.lightBorder} rounded-2xl shadow-sm hover:shadow-md dark:shadow-lg backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
                 >
                   <div className="shrink-0">{app.svg}</div>
                   <div className="text-left">
                     <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">{app.badge}</div>
+                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">{app.badge}</div>
                   </div>
                 </div>
               ))}
-              {/* Duplicate loop of row 2 for seamless infinite looping */}
               {CAROUSEL_APPS_ROW2.map((app, i) => (
                 <div
                   key={`r2-b-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900/90 dark:bg-gradient-to-br ${app.darkBg} border border-slate-200 dark:border-slate-800 ${app.lightBorder} rounded-2xl shadow-sm hover:shadow-md dark:shadow-lg backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
                 >
                   <div className="shrink-0">{app.svg}</div>
                   <div className="text-left">
                     <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">{app.badge}</div>
+                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">{app.badge}</div>
                   </div>
                 </div>
               ))}
@@ -484,247 +472,171 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* =========================================================================
-          HOW IT WORKS (Technical Simplicity in 3 Steps - Inspired by taap.it)
+          BEFORE VS AFTER INTERACTIVE COMPARISON (openup.to Dual Phone Showcase)
          ========================================================================= */}
-      <section id="come-funziona" className="max-w-5xl mx-auto space-y-10 scroll-mt-24">
+      <section className="max-w-5xl mx-auto space-y-10 scroll-mt-24">
         <div className="text-center space-y-3">
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Come Funziona la Magia del Bypass in 3 Passaggi
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Il Problema del Browser di Instagram</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+            Perché i Link Tradizionali Falliscono
           </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-            Nessuna app da scaricare per i tuoi follower e nessuna riga di codice da programmare. Funziona al 100% in cloud.
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            Guarda la differenza tra cosa vede il tuo follower quando tocca un link normale vs quando utilizzi un Deep Link di smartjump:
+          </p>
+
+        </div>
+
+        {/* Dual Video Showcase - OpenUp style full width, no padding, no borders, no titles */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-start">
+          {/* VIDEO 1: SENZA SMARTJUMP */}
+          <div className="relative w-full aspect-square rounded-3xl bg-black overflow-hidden shadow-xl">
+            <iframe
+              src="https://livid.com/embed/_a4pId0bN56F?autoplay=1&loop=1&muted=1&background=1"
+              title="Senza smartjump"
+              className="w-full h-full border-0 select-none bg-black"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              loading="eager"
+            />
+
+            {/* Absolute Shield: strictly prevents clicking play, pause, or seeking */}
+            <div
+              className="absolute inset-0 z-10 cursor-default select-none pointer-events-auto"
+              aria-hidden="true"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          </div>
+
+          {/* VIDEO 2: CON SMARTJUMP */}
+          <div className="relative w-full aspect-square rounded-3xl bg-black overflow-hidden shadow-xl">
+            <iframe
+              src="https://livid.com/embed/ciMQbnr6TMg-?autoplay=1&loop=1&muted=1&background=1"
+              title="Con smartjump"
+              className="w-full h-full border-0 select-none bg-black"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              loading="eager"
+            />
+
+            {/* Absolute Shield: strictly prevents clicking play, pause, or seeking */}
+            <div
+              className="absolute inset-0 z-10 cursor-default select-none pointer-events-auto"
+              aria-hidden="true"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          OPENUP.TO BENTO GRID OF CORE ADVANTAGES
+         ========================================================================= */}
+      <section className="max-w-5xl mx-auto space-y-10">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-300 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Tecnologia smartjump di Nuova Generazione</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+            Tutto ciò che serve per convertire al massimo
+          </h2>
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+            Progettato appositamente per influencer, affiliate marketer, creator e brand che monetizzano su Instagram.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Step 1 */}
-          <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 relative hover:border-slate-300 dark:hover:border-slate-700 shadow-sm hover:shadow-md transition-all">
-            <span className="text-5xl font-black text-slate-100 dark:text-slate-800 absolute top-5 right-5 select-none">01</span>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-              <Copy className="w-6 h-6" />
+          {/* Bento Item 1 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center font-bold shadow-md shadow-pink-500/20">
+              <Zap className="w-6 h-6 fill-current" />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Incolla il Tuo Link Originale</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">1-Click Instant Breakout</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Incolla il link della tua pagina prodotto Amazon, video YouTube, playlist Spotify o e-commerce. DeepDirect genera subito il tuo Smart Deep Link pronto all'uso.
+              Zero schermate intermedie noiose o bottoni "Premi qui per continuare". smartjump effettua l'apertura in meno di 200ms in modo fluido e trasparente.
             </p>
           </div>
 
-          {/* Step 2 */}
-          <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 relative hover:border-slate-300 dark:hover:border-slate-700 shadow-sm hover:shadow-md transition-all">
-            <span className="text-5xl font-black text-slate-100 dark:text-slate-800 absolute top-5 right-5 select-none">02</span>
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-500/10 border border-teal-200 dark:border-teal-500/30 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+          {/* Bento Item 2 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-500 to-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-pink-500/20">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Tag Affiliazione & Cookie Protetti</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Conserva al 100% i tuoi tag Amazon Associates (es. <code className="text-pink-600">tag=tuoid-21</code>), parametri UTM e codici sconto senza alcuna perdita.
+            </p>
+          </div>
+
+          {/* Bento Item 3 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-rose-500 text-white flex items-center justify-center font-bold shadow-md shadow-purple-500/20">
               <RefreshCw className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Rilevamento Intelligente OS</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Smart Fallback Automatico</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Quando un utente tocca il link da Instagram o TikTok, il nostro server rileva il sistema operativo (iOS o Android) in &lt;200ms e prepara l'Universal Link nativo.
+              Se l'utente non ha l'app specifica installata, smartjump non mostra errori ma apre pulito Safari o Chrome, garantendo una navigazione impeccabile.
             </p>
           </div>
 
-          {/* Step 3 */}
-          <div className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 relative hover:border-slate-300 dark:hover:border-slate-700 shadow-sm hover:shadow-md transition-all">
-            <span className="text-5xl font-black text-slate-100 dark:text-slate-800 absolute top-5 right-5 select-none">03</span>
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+          {/* Bento Item 4 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-500/20">
+              <Globe className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Dominio Personalizzato CNAME</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Nel piano PRO puoi utilizzare il tuo brand: <code className="text-purple-600">link.iltuobrand.com</code> o <code className="text-purple-600">go.tuonome.it</code> per aumentare la fiducia al click.
+            </p>
+          </div>
+
+          {/* Bento Item 5 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pink-600 to-rose-600 text-white flex items-center justify-center font-bold shadow-md shadow-pink-500/20">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Statistiche & Click in Tempo Reale</h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Monitora quanti follower cliccano dalle Storie, quale percentuale usa iOS vs Android e da quali app provengono le tue conversioni.
+            </p>
+          </div>
+
+          {/* Bento Item 6 */}
+          <div className="p-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 hover:border-pink-300 dark:hover:border-pink-500/40 shadow-sm hover:shadow-md transition-all">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-pink-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
               <Smartphone className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">Apertura Istantanea In-App</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Compatibile al 100% con iOS & Android</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              L'app nativa si apre all'istante sullo smartphone del follower con il suo profilo già loggato. Se non ha l'app, il fallback apre pulito Safari o Chrome.
+              Testato e ottimizzato per le ultime versioni di iOS 17/18 e Android 14/15, garantendo l'apertura immediata in qualsiasi scenario.
             </p>
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          BEFORE VS AFTER INTERACTIVE COMPARISON (Visual Smartphone Mockups)
+          INTERACTIVE REVENUE LOSS CALCULATOR (openup.to / taap.it style)
          ========================================================================= */}
-      <section id="confronto" className="max-w-5xl mx-auto space-y-10 scroll-mt-24">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-semibold">
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Il Dramma del Browser In-App</span>
-          </div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Perché i Tuoi Link Normali Stanno Distruggendo le Tue Vendite
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            Guarda la differenza tra cosa vede un tuo follower quando tocca un link normale vs quando utilizzi DeepDirect:
-          </p>
-
-          {/* Toggle buttons for comparison views */}
-          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <button
-              type="button"
-              onClick={() => setActiveComparisonTab('both')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeComparisonTab === 'both' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Affiancati
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveComparisonTab('without')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeComparisonTab === 'without' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300 shadow-sm' : 'hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Senza DeepDirect
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveComparisonTab('with')}
-              className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                activeComparisonTab === 'with' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 shadow-sm' : 'hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              Con DeepDirect
-            </button>
-          </div>
-        </div>
-
-        {/* Dual Phone Showcase */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* MOCKUP 1: SENZA DEEPDIRECT (Trappola In-App Browser) */}
-          {(activeComparisonTab === 'both' || activeComparisonTab === 'without') && (
-            <div className="relative p-6 sm:p-7 bg-white dark:bg-slate-900/90 border-2 border-red-200 dark:border-red-500/40 rounded-3xl space-y-6 shadow-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-red-100 dark:border-red-500/20">
-                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-sm">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Senza DeepDirect (Link Normale)</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-[11px] font-bold">
-                  -74% Vendite
-                </span>
-              </div>
-
-              {/* Visual Simulated Phone Frame */}
-              <div className="w-full max-w-[320px] mx-auto bg-slate-50 dark:bg-slate-950 border-4 border-slate-200 dark:border-slate-800 rounded-3xl p-3 shadow-md space-y-3">
-                {/* Fake In-App Browser Header */}
-                <div className="flex items-center justify-between px-2 py-1.5 bg-slate-200/70 dark:bg-slate-900 rounded-lg text-[10px] text-slate-600 dark:text-slate-400">
-                  <span className="truncate">instagram.com/inapp-browser</span>
-                  <span className="font-bold text-slate-700 dark:text-slate-300">✕</span>
-                </div>
-
-                {/* Simulated Content with Friction Warning Overlays */}
-                <div className="p-4 bg-white dark:bg-slate-900/90 rounded-2xl border border-red-200 dark:border-red-500/30 space-y-3 text-center shadow-inner">
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 mx-auto flex items-center justify-center font-bold text-sm">
-                    🔒
-                  </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white">Accedi per Continuare</div>
-                  <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                    "Inserisci email e password per acquistare con il tuo account Amazon Prime"
-                  </p>
-
-                  <div className="p-2 bg-slate-100 dark:bg-slate-950 rounded border border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 font-mono text-left">
-                    Password dimenticata?
-                  </div>
-
-                  <div className="p-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-500/40 rounded text-[10px] text-red-700 dark:text-red-300 font-semibold">
-                    ❌ L'utente chiude il browser (Abbandono)
-                  </div>
-                </div>
-
-                {/* Status Bar */}
-                <div className="text-center text-[10px] text-slate-400 dark:text-slate-500">
-                  Sessione anonima e isolata
-                </div>
-              </div>
-
-              {/* Bullet Points of Friction */}
-              <div className="space-y-2 text-xs text-slate-600 dark:text-slate-300">
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 font-bold shrink-0">✕</span>
-                  <span><strong className="text-slate-900 dark:text-white">Nessun login salvato:</strong> L'utente deve autenticarsi da zero digitando credenziali complesse.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 font-bold shrink-0">✕</span>
-                  <span><strong className="text-slate-900 dark:text-white">Niente Apple Pay o 1-Click:</strong> I dati di pagamento salvati nel wallet non sono disponibili.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-red-500 font-bold shrink-0">✕</span>
-                  <span><strong className="text-slate-900 dark:text-white">Cookie e tracking persi:</strong> Se l'utente apre l'app manualmente dopo 1 ora, le tue commissioni svaniscono.</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* MOCKUP 2: CON DEEPDIRECT (App Nativa Ufficiale) */}
-          {(activeComparisonTab === 'both' || activeComparisonTab === 'with') && (
-            <div className="relative p-6 sm:p-7 bg-white dark:bg-slate-900/90 dark:bg-gradient-to-b dark:from-emerald-950/30 dark:via-slate-900 dark:to-slate-950 border-2 border-emerald-400 dark:border-emerald-500/60 rounded-3xl space-y-6 shadow-md shadow-emerald-500/5">
-              <div className="flex items-center justify-between pb-3 border-b border-emerald-100 dark:border-emerald-500/20">
-                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Con DeepDirect (App Nativa Ufficiale)</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold">
-                  +310% Conversioni
-                </span>
-              </div>
-
-              {/* Visual Simulated Phone Frame */}
-              <div className="w-full max-w-[320px] mx-auto bg-slate-50 dark:bg-slate-950 border-4 border-emerald-300 dark:border-emerald-500/40 rounded-3xl p-3 shadow-md space-y-3">
-                {/* Fake Native App Header */}
-                <div className="flex items-center justify-between px-2 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                  <span>amazon://app/prime</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">● Connesso</span>
-                </div>
-
-                {/* Simulated Native App UI */}
-                <div className="p-4 bg-white dark:bg-slate-900/90 rounded-2xl border border-emerald-200 dark:border-emerald-500/40 space-y-3 text-center shadow-inner">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center font-bold text-sm">
-                    ✨
-                  </div>
-                  <div className="text-xs font-bold text-slate-900 dark:text-white">Bentornato Marco!</div>
-                  <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight">
-                    Spedizione Prime gratuita domani al tuo indirizzo abituale
-                  </p>
-
-                  <div className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg text-xs shadow-md cursor-default">
-                    Acquista ora con 1-Click
-                  </div>
-
-                  <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-500/40 rounded text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold">
-                    ✅ Vendita conclusa in 3 secondi
-                  </div>
-                </div>
-
-                {/* Status Bar */}
-                <div className="text-center text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  Cookie affiliazione e UTM preservati al 100%
-                </div>
-              </div>
-
-              {/* Bullet Points of Success */}
-              <div className="space-y-2 text-xs text-slate-700 dark:text-slate-200">
-                <div className="flex items-start gap-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓</span>
-                  <span><strong className="text-slate-900 dark:text-white">Zero login richiesto:</strong> L'utente è già autenticato nell'app Amazon o YouTube sul telefono.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓</span>
-                  <span><strong className="text-slate-900 dark:text-white">Acquisto immediato a 1 tocco:</strong> Carta memorizzata, Apple Pay e FaceID pronti in 2 secondi.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">✓</span>
-                  <span><strong className="text-slate-900 dark:text-white">Commissioni garantite:</strong> Il tuo ID affiliato o tag di tracking viene iniettato direttamente nell'app.</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* =========================================================================
-          INTERACTIVE CONVERSION & REVENUE LOSS CALCULATOR (Inspired by taap.it)
-         ========================================================================= */}
-      <section id="calcolatore" className="max-w-4xl mx-auto p-6 sm:p-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-8 shadow-sm dark:shadow-2xl relative scroll-mt-24">
+      <section className="max-w-4xl mx-auto p-6 sm:p-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-8 shadow-sm relative">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 text-xs font-semibold">
             <Sliders className="w-3.5 h-3.5" />
             <span>Calcolatore di Vendite & Guadagni Recuperati</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
             Quanti Soldi Stai Perdendo a Causa del Browser In-App?
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
@@ -737,8 +649,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Slider 1: Click Mensili */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-700 dark:text-slate-300 font-semibold">Click mensili sui tuoi link social:</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-sm">
+              <span className="text-slate-700 dark:text-slate-300 font-semibold">Click mensili sui tuoi link Instagram:</span>
+              <span className="text-pink-600 dark:text-pink-400 font-bold font-mono text-sm">
                 {monthlyClicks.toLocaleString()} click / mese
               </span>
             </div>
@@ -749,7 +661,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               step="500"
               value={monthlyClicks}
               onChange={(e) => setMonthlyClicks(Number(e.target.value))}
-              className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600 dark:accent-emerald-500"
+              className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-600"
             />
             <div className="flex justify-between text-[10px] text-slate-500">
               <span>500 click</span>
@@ -758,11 +670,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Slider 2: Valore Medio Ordine / Commissione */}
+          {/* Slider 2: Valore Medio Ordine */}
           <div className="space-y-3">
             <div className="flex justify-between items-center text-xs">
               <span className="text-slate-700 dark:text-slate-300 font-semibold">Valore medio ordine o carrello:</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono text-sm">
+              <span className="text-pink-600 dark:text-pink-400 font-bold font-mono text-sm">
                 {avgOrderValue} €
               </span>
             </div>
@@ -773,7 +685,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               step="5"
               value={avgOrderValue}
               onChange={(e) => setAvgOrderValue(Number(e.target.value))}
-              className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-600 dark:accent-emerald-500"
+              className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-600"
             />
             <div className="flex justify-between text-[10px] text-slate-500">
               <span>10 €</span>
@@ -790,31 +702,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="text-2xl font-black text-red-600 dark:text-red-400 font-mono">
               -{lostClicks.toLocaleString()}
             </div>
-            <div className="text-[10px] text-slate-500">visitatori bloccati al login</div>
+            <div className="text-[10px] text-slate-500">follower bloccati al login</div>
           </div>
 
-          <div className="p-4 bg-emerald-50/70 dark:bg-slate-950/80 border border-emerald-200 dark:border-emerald-500/30 rounded-2xl space-y-1 text-center">
+          <div className="p-4 bg-pink-50/70 dark:bg-slate-950/80 border border-pink-200 dark:border-pink-500/30 rounded-2xl space-y-1 text-center">
             <div className="text-xs text-slate-600 dark:text-slate-400">Ordini extra recuperati con l'app</div>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            <div className="text-2xl font-black text-pink-600 dark:text-pink-400 font-mono">
               +{recoveredSales.toLocaleString()} ordini
             </div>
             <div className="text-[10px] text-slate-500">conclusi con 1-Click Buy</div>
           </div>
 
-          <div className="p-4 bg-gradient-to-br from-emerald-600 to-teal-700 text-white dark:from-emerald-950/60 dark:to-slate-950 border-2 border-emerald-500 rounded-2xl space-y-1 text-center shadow-lg shadow-emerald-500/10">
-            <div className="text-xs text-emerald-100 dark:text-emerald-300 font-semibold">Guadagno stimato recuperato</div>
+          <div className="p-4 bg-gradient-to-br from-purple-600 via-pink-600 to-amber-500 text-white border-2 border-pink-400 rounded-2xl space-y-1 text-center shadow-lg shadow-pink-500/20">
+            <div className="text-xs text-pink-100 font-semibold">Guadagno stimato recuperato</div>
             <div className="text-2xl font-black text-white font-mono">
-              +{recoveredRevenue.toLocaleString()} € <span className="text-xs font-normal text-emerald-100 dark:text-slate-400">/ mese</span>
+              +{recoveredRevenue.toLocaleString()} € <span className="text-xs font-normal text-pink-100">/ mese</span>
             </div>
-            <div className="text-[10px] text-emerald-100 dark:text-emerald-400 font-medium">Il piano si ripaga con 1 solo ordine</div>
+            <div className="text-[10px] text-pink-100 font-medium">Il servizio si ripaga con 1 solo ordine</div>
           </div>
         </div>
 
-        {/* Call to action inside calculator */}
         <div className="pt-2 text-center">
           <button
             onClick={onOpenCreateModal}
-            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-emerald-600/20 cursor-pointer inline-flex items-center gap-2"
+            className="px-7 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-lg shadow-pink-500/25 cursor-pointer inline-flex items-center gap-2"
           >
             <Zap className="w-4 h-4 fill-current" />
             <span>Inizia a Recuperare i Tuoi Guadagni Gratis</span>
@@ -825,10 +736,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* =========================================================================
           KEY METRICS / STATS COUNTER BAR
          ========================================================================= */}
-      <section className="max-w-5xl mx-auto p-6 sm:p-8 bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
+      <section className="max-w-5xl mx-auto p-6 sm:p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <div className="space-y-1">
-            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-emerald-400 dark:to-teal-300">
+            <div className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 bg-clip-text text-transparent">
               +310%
             </div>
             <div className="text-xs font-semibold text-slate-900 dark:text-white">Aumento Conversioni</div>
@@ -844,7 +755,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           <div className="space-y-1">
-            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400">
+            <div className="text-3xl sm:text-4xl font-black text-pink-600 dark:text-pink-400">
               100%
             </div>
             <div className="text-xs font-semibold text-slate-900 dark:text-white">Salvataggio Cookie</div>
@@ -864,13 +775,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* =========================================================================
           PRICING SECTION: STRICTLY 2 TIERS (Free vs PRO)
          ========================================================================= */}
-      <section id="prezzi" className="max-w-4xl mx-auto space-y-10 scroll-mt-24">
+      <section className="max-w-4xl mx-auto space-y-10 scroll-mt-24">
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 text-xs font-semibold">
             <Zap className="w-3.5 h-3.5" />
             <span>Trasparenza Assoluta</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
             Due Soli Piani Semplici. Nessun Costo Nascosto.
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
@@ -898,19 +809,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <ul className="space-y-3 text-xs text-slate-600 dark:text-slate-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span><strong className="text-slate-900 dark:text-white">Fino a 5 deep link attivi</strong> contemporaneamente</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Bypass automatico del browser in-app (Instagram, TikTok, FB)</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Smart Redirect iOS Universal Links & Android Intent</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Statistiche di base su click totali e dispositivi</span>
                 </li>
                 <li className="flex items-center gap-2.5 text-slate-400 dark:text-slate-500">
@@ -929,8 +840,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* PRO TIER (SamCart Integration) */}
-          <div className="relative p-7 bg-gradient-to-b from-emerald-50/70 via-white to-white dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-950 border-2 border-emerald-500 rounded-3xl space-y-6 shadow-xl shadow-emerald-500/10 flex flex-col justify-between">
-            <div className="absolute -top-3.5 right-6 px-3.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold text-xs rounded-full shadow-md uppercase tracking-wider">
+          <div className="relative p-7 bg-white dark:bg-slate-900 border-2 border-pink-500 rounded-3xl space-y-6 shadow-xl shadow-pink-500/10 flex flex-col justify-between">
+            <div className="absolute -top-3.5 right-6 px-3.5 py-0.5 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 text-white font-bold text-xs rounded-full shadow-md uppercase tracking-wider">
               Consigliato
             </div>
 
@@ -939,9 +850,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <div>
                   <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                     Piano PRO
-                    <Zap className="w-4 h-4 text-emerald-500 dark:text-emerald-400 fill-current" />
+                    <Zap className="w-4 h-4 text-pink-500 fill-current" />
                   </h3>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Massima potenza senza alcun limite</p>
+                  <p className="text-xs text-pink-600 dark:text-pink-400 font-medium">Massima potenza senza alcun limite</p>
                 </div>
               </div>
 
@@ -949,25 +860,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 Accesso PRO <span className="text-xs font-normal text-slate-500 dark:text-slate-400">tramite SamCart</span>
               </div>
 
-              <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-200 pt-2 border-t border-emerald-100 dark:border-emerald-500/20">
+              <ul className="space-y-3 text-xs text-slate-700 dark:text-slate-200 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span><strong className="text-slate-900 dark:text-white">Deep Link ILLIMITATI</strong> (nessun blocco di 5 link)</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Click, redirect e visitatori senza limiti di traffico</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span>Dominio personalizzato (<code className="text-emerald-600 dark:text-emerald-300 font-semibold">link.tuosito.it</code>)</span>
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
+                  <span>Dominio personalizzato (<code className="text-pink-600 font-semibold">link.tuosito.it</code>)</span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Attivazione immediata automatica con <strong>Webhook SamCart</strong></span>
                 </li>
                 <li className="flex items-center gap-2.5">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <Check className="w-4 h-4 text-pink-600 dark:text-pink-400 shrink-0" />
                   <span>Supporto prioritario e aggiornamenti continui</span>
                 </li>
               </ul>
@@ -975,7 +886,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={onOpenUpgrade}
-              className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Acquista Piano PRO con SamCart</span>
               <ExternalLink className="w-4 h-4" />
@@ -985,12 +896,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* =========================================================================
-          FAQ ACCORDION SECTION (Inspired by taap.it)
+          FAQ ACCORDION SECTION (openup.to style)
          ========================================================================= */}
-      <section id="faq" className="max-w-3xl mx-auto space-y-8 scroll-mt-24">
+      <section className="max-w-3xl mx-auto space-y-8 scroll-mt-24">
         <div className="text-center space-y-3">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2">
-            <HelpCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+            <HelpCircle className="w-6 h-6 text-pink-600 dark:text-pink-400" />
             Domande Frequenti (FAQ)
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -1009,7 +920,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenFaq(isOpen ? null : index)}
-                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-semibold text-slate-900 dark:text-white text-sm hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                  className="w-full p-5 text-left flex items-center justify-between gap-4 font-semibold text-slate-900 dark:text-white text-sm hover:text-pink-600 dark:hover:text-pink-400 transition-colors cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   {isOpen ? (
@@ -1030,30 +941,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* =========================================================================
-          FINAL HIGH-CONVERSION CTA BANNER
+          FINAL HIGH-CONVERSION CTA BANNER (Instagram colors)
          ========================================================================= */}
-      <section className="max-w-4xl mx-auto p-8 sm:p-12 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 text-white rounded-3xl text-center space-y-6 shadow-xl relative overflow-hidden">
+      <section className="max-w-4xl mx-auto p-8 sm:p-12 bg-gradient-to-r from-purple-700 via-pink-600 to-amber-500 text-white rounded-3xl text-center space-y-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative space-y-4">
-          <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-            Pronto a Smettere di Regalare il 70% delle Tue Conversioni?
+          <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            Pronto a Triplicare le Tue Conversioni da Instagram?
           </h2>
-          <p className="text-sm text-emerald-50 max-w-xl mx-auto leading-relaxed">
-            Unisciti ai creator, affiliati ed e-commerce che utilizzano DeepDirect per far atterrare i loro follower direttamente nelle app native.
+          <p className="text-sm sm:text-base text-pink-100 max-w-xl mx-auto leading-relaxed">
+            Unisciti ai creator, affiliati ed e-commerce che utilizzano smartjump per far atterrare i follower direttamente nelle app native.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
             <button
               onClick={onOpenCreateModal}
-              className="w-full sm:w-auto px-7 py-3.5 bg-white hover:bg-slate-100 text-slate-950 font-bold text-sm rounded-xl shadow-xl transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-8 py-4 bg-white hover:bg-slate-100 text-slate-950 font-black text-sm rounded-xl shadow-xl transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center justify-center gap-2"
             >
-              <Zap className="w-4 h-4 fill-current text-emerald-600" />
+              <Zap className="w-4 h-4 fill-current text-pink-600" />
               <span>Inizia Subito Gratis (Fino a 5 Link)</span>
             </button>
             <button
               onClick={currentUser ? onGoToDashboard : onOpenAuth}
-              className="w-full sm:w-auto px-6 py-3.5 bg-slate-950/40 hover:bg-slate-950/60 text-white font-semibold text-sm rounded-xl border border-white/20 transition-colors cursor-pointer"
+              className="w-full sm:w-auto px-6 py-4 bg-slate-950/40 hover:bg-slate-950/60 text-white font-semibold text-sm rounded-xl border border-white/20 transition-colors cursor-pointer"
             >
               {currentUser ? 'Vai alla Tua Dashboard' : 'Accedi al Tuo Account'}
             </button>

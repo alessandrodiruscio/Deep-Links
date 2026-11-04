@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link2, Plus, User, LogOut, Zap, Shield, ChevronDown, Sun, Moon } from 'lucide-react';
+import { Plus, User, LogOut, Zap, Shield, ChevronDown, Sun, Moon } from 'lucide-react';
 import { UserProfile } from '../types/deepLink';
 import { useTheme } from '../context/ThemeContext';
+import { SmartJumpLogo } from './SmartJumpLogo';
 
 interface HeaderProps {
   currentTab: 'links' | 'analytics';
@@ -39,36 +40,24 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-white/85 dark:bg-slate-950/85 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-3">
-          {/* Brand Zone */}
+          {/* Brand Zone with SmartJumpLogo */}
           <div
             onClick={handleLogoClick}
-            className="flex items-center gap-3 shrink-0 cursor-pointer"
-            title="Torna all'inizio"
+            className="flex items-center gap-2 shrink-0 cursor-pointer"
+            title="smartjump - Torna all'inizio"
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 text-white font-bold">
-              <Link2 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
-                  DeepDirect
-                </span>
-                {currentUser && (
-                  <span
-                    className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
-                      isPro
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                    }`}
-                  >
-                    {isPro ? '⭐ PRO' : `Free: ${currentUser.currentLinkCount || 0}/5`}
-                  </span>
-                )}
-              </div>
-              <span className="hidden sm:inline-block text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-                Deep Link Engine & Commercial SaaS
+            <SmartJumpLogo size="md" />
+            {currentUser && (
+              <span
+                className={`hidden sm:inline-block ml-1 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                  isPro
+                    ? 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/30'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
+                }`}
+              >
+                {isPro ? '⭐ PRO' : `Free: ${currentUser.currentLinkCount || 0}/5`}
               </span>
-            </div>
+            )}
           </div>
 
           {/* Navigation Links: When LOGGED IN, show platform tabs */}
@@ -99,41 +88,44 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Theme Toggle Button (Light/Dark Mode) */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={theme === 'light' ? 'Passa a modalità scura (Dark)' : 'Passa a modalità chiara (Light)'}
-              aria-label="Cambia tema chiaro/scuro"
-              className="p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer shrink-0"
-            >
-              {theme === 'light' ? (
-                <Moon className="w-4 h-4 text-slate-700" />
-              ) : (
-                <Sun className="w-4 h-4 text-amber-400" />
-              )}
-            </button>
-
-            {/* Upgrade Button if not Pro */}
-            {!isPro && (
-              <button
-                onClick={onOpenUpgrade}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-950 bg-emerald-400 hover:bg-emerald-300 rounded-lg shadow-sm shadow-emerald-400/20 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
-              >
-                <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Passa a PRO</span>
-              </button>
-            )}
-
-            {/* Create Link Button: ONLY when logged in */}
+            {/* Controls only shown when user is LOGGED IN */}
             {currentUser && (
-              <button
-                onClick={onOpenCreateModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 active:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Nuovo Deep Link</span>
-              </button>
+              <>
+                {/* Theme Toggle Button (Light/Dark Mode) */}
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  title={theme === 'light' ? 'Passa a modalità scura (Dark)' : 'Passa a modalità chiara (Light)'}
+                  aria-label="Cambia tema chiaro/scuro"
+                  className="p-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors cursor-pointer shrink-0"
+                >
+                  {theme === 'light' ? (
+                    <Moon className="w-4 h-4 text-slate-700" />
+                  ) : (
+                    <Sun className="w-4 h-4 text-amber-400" />
+                  )}
+                </button>
+
+                {/* Upgrade Button if not Pro */}
+                {!isPro && (
+                  <button
+                    onClick={onOpenUpgrade}
+                    className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 rounded-lg shadow-sm shadow-pink-500/20 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>Passa a PRO</span>
+                  </button>
+                )}
+
+                {/* Create Link Button */}
+                <button
+                  onClick={onOpenCreateModal}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors shadow-sm whitespace-nowrap shrink-0 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Nuovo Deep Link</span>
+                </button>
+              </>
             )}
 
             {/* User Profile / Auth Area */}
@@ -143,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-300 text-xs transition-colors cursor-pointer"
                 >
-                  <div className="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
+                  <div className="w-6 h-6 rounded-md bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center font-bold text-xs">
                     {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <span className="hidden md:inline-block max-w-[100px] truncate font-medium">
@@ -160,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                       <div className="font-semibold text-slate-900 dark:text-white truncate">{currentUser.name || 'Utente'}</div>
                       <div className="text-slate-500 dark:text-slate-400 truncate">{currentUser.email}</div>
-                      <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                      <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-pink-600 dark:text-pink-400">
                         <Shield className="w-3 h-3" />
                         <span>Piano: {isPro ? 'PRO (Illimitato)' : `Free (${currentUser.currentLinkCount || 0}/5)`}</span>
                       </div>
@@ -170,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
                       onClick={onOpenUpgrade}
                       className="w-full text-left px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer"
                     >
-                      <Zap className="w-3.5 h-3.5 text-emerald-500" />
+                      <Zap className="w-3.5 h-3.5 text-pink-500" />
                       <span>{isPro ? 'Dettagli Piano PRO' : 'Passa a PRO (SamCart)'}</span>
                     </button>
 
@@ -185,18 +177,19 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              /* When not logged in (Landing page), ONLY Login and Sign up buttons */
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   onClick={() => onOpenAuth('login')}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors whitespace-nowrap cursor-pointer"
                 >
                   Login
                 </button>
                 <button
                   type="button"
                   onClick={() => onOpenAuth('register')}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-sm shadow-indigo-600/20 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:opacity-95 rounded-xl shadow-md shadow-pink-500/25 transition-all hover:scale-105 whitespace-nowrap cursor-pointer"
                 >
                   Sign up
                 </button>

@@ -281,6 +281,7 @@ async function startServer() {
   const isProd = process.env.NODE_ENV === 'production';
 
   app.use(express.json());
+  app.use(express.static(path.resolve(__dirname, 'public')));
 
   // -------------------------------------------------------------
   // API Endpoints
