@@ -44,7 +44,7 @@ interface AppBrand {
   svg: React.ReactNode;
 }
 
-const CAROUSEL_APPS_ROW1: AppBrand[] = [
+const CAROUSEL_APPS: AppBrand[] = [
   {
     name: 'Amazon',
     badge: '1-Click Prime',
@@ -163,9 +163,6 @@ const CAROUSEL_APPS_ROW1: AppBrand[] = [
       </svg>
     ),
   },
-];
-
-const CAROUSEL_APPS_ROW2: AppBrand[] = [
   {
     name: 'Shopify / Safari',
     badge: 'Apple Pay Ready',
@@ -396,73 +393,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         {/* =========================================================================
-            CONTINUOUS INFINITE MOVING LOGO CAROUSEL (openup.to style)
+            CONTINUOUS INFINITE MOVING LOGO CAROUSEL (openup.to style: 1 single row of squircle app cards)
            ========================================================================= */}
         <div className="mt-14 relative w-full overflow-hidden py-4">
-          <div className="text-center mb-5">
-            <p className="text-xs uppercase tracking-widest font-bold text-pink-600 dark:text-pink-400">
-              Supporto Nativo per Oltre 20+ Applicazioni & Qualsiasi Store
-            </p>
-          </div>
-
           {/* Edge gradient masks */}
           <div className="pointer-events-none absolute inset-y-0 left-0 w-24 sm:w-40 bg-gradient-to-r from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 z-10" />
           <div className="pointer-events-none absolute inset-y-0 right-0 w-24 sm:w-40 bg-gradient-to-l from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 z-10" />
 
-          {/* Track 1: Moving left */}
-          <div className="flex overflow-hidden py-2 select-none">
-            <div className="animate-marquee flex items-center gap-4">
-              {CAROUSEL_APPS_ROW1.map((app, i) => (
+          {/* Single Continuous Track: Moving left */}
+          <div className="flex overflow-hidden py-3 select-none">
+            <div className="animate-marquee flex items-center gap-4 sm:gap-5">
+              {CAROUSEL_APPS.map((app, i) => (
                 <div
-                  key={`r1-a-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  key={`brand-a-${i}`}
+                  title={app.name}
+                  className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-[20px] shadow-[0_4px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:border-pink-300 dark:hover:border-pink-500/50 hover:shadow-lg hover:scale-105 transition-all duration-300 shrink-0 cursor-default group"
                 >
-                  <div className="shrink-0">{app.svg}</div>
-                  <div className="text-left">
-                    <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold">{app.badge}</div>
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full transition-transform duration-300 group-hover:scale-110">
+                    {app.svg}
                   </div>
                 </div>
               ))}
-              {CAROUSEL_APPS_ROW1.map((app, i) => (
+              {CAROUSEL_APPS.map((app, i) => (
                 <div
-                  key={`r1-b-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
+                  key={`brand-b-${i}`}
+                  title={app.name}
+                  className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-[20px] shadow-[0_4px_16px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3)] hover:border-pink-300 dark:hover:border-pink-500/50 hover:shadow-lg hover:scale-105 transition-all duration-300 shrink-0 cursor-default group"
                 >
-                  <div className="shrink-0">{app.svg}</div>
-                  <div className="text-left">
-                    <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold">{app.badge}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Track 2: Moving right */}
-          <div className="flex overflow-hidden py-2 select-none mt-2">
-            <div className="animate-marquee-reverse flex items-center gap-4">
-              {CAROUSEL_APPS_ROW2.map((app, i) => (
-                <div
-                  key={`r2-a-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
-                >
-                  <div className="shrink-0">{app.svg}</div>
-                  <div className="text-left">
-                    <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">{app.badge}</div>
-                  </div>
-                </div>
-              ))}
-              {CAROUSEL_APPS_ROW2.map((app, i) => (
-                <div
-                  key={`r2-b-${i}`}
-                  className={`flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500/50 backdrop-blur-md shrink-0 hover:scale-105 transition-all cursor-default`}
-                >
-                  <div className="shrink-0">{app.svg}</div>
-                  <div className="text-left">
-                    <div className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm">{app.name}</div>
-                    <div className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">{app.badge}</div>
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center [&>svg]:w-full [&>svg]:h-full transition-transform duration-300 group-hover:scale-110">
+                    {app.svg}
                   </div>
                 </div>
               ))}

@@ -235,25 +235,24 @@ function AppInner() {
               (l) => !PREDEFINED_SAMPLE_SLUGS.has((l.slug || '').toLowerCase())
             );
 
-            // Only auto-sync pending links explicitly created offline (id starting with 'local_')
+            // Auto-sync ANY user link found in localStorage that is not yet in the server database
             const serverIdSet = new Set(cleanServerLinks.map((s) => s.id));
-            const serverSlugSet = new Set(cleanServerLinks.map((s) => s.slug.toLowerCase()));
+            const serverSlugSet = new Set(cleanServerLinks.map((s) => (s.slug || '').toLowerCase()));
             const offlineLinksToSync = userCustomLinks.filter(
-              (ul) => ul.id.startsWith('local_') && !serverIdSet.has(ul.id) && !serverSlugSet.has((ul.slug || '').toLowerCase())
+              (ul) => !serverIdSet.has(ul.id) && !serverSlugSet.has((ul.slug || '').toLowerCase())
             );
 
             if (offlineLinksToSync.length > 0) {
               syncLinksToDatabase(offlineLinksToSync);
             }
 
-            // Server is the single source of truth for persistent links
+            // Server is the primary source of truth, preserving any pending local links
             const map = new Map<string, DeepLink>();
             for (const item of cleanServerLinks) {
               map.set(item.id, item);
             }
-            // Retain any pending offline links that have not finished syncing yet
             for (const userLink of userCustomLinks) {
-              if (userLink.id.startsWith('local_') && !map.has(userLink.id)) {
+              if (!map.has(userLink.id) && !serverSlugSet.has((userLink.slug || '').toLowerCase())) {
                 map.set(userLink.id, userLink);
               }
             }

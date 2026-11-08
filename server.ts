@@ -977,8 +977,9 @@ async function startServer() {
     saveLinks(linksCache);
 
     if (mysqlPool) {
-      ensureMySQLTableExists().then(() => {
-        mysqlPool!.query(
+      try {
+        await ensureMySQLTableExists();
+        await mysqlPool.query(
           `INSERT INTO deep_links (
             id, slug, original_url, platform, target_mode, title, folder, project, description, image_url, user_id, clicks, stats, data
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1012,8 +1013,10 @@ async function startServer() {
             JSON.stringify(newLink.stats || {}),
             JSON.stringify(newLink),
           ]
-        ).catch((err) => console.warn('MySQL insert failed in server.ts:', err));
-      });
+        );
+      } catch (err) {
+        console.warn('MySQL insert failed in server.ts:', err);
+      }
     }
 
     if (sqlClient) {
